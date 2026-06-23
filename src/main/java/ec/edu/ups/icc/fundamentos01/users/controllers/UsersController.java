@@ -4,13 +4,9 @@ import ec.edu.ups.icc.fundamentos01.users.dto.CreateUserDto;
 import ec.edu.ups.icc.fundamentos01.users.dto.PartialUpdateUserDto;
 import ec.edu.ups.icc.fundamentos01.users.dto.UpdateUserDto;
 import ec.edu.ups.icc.fundamentos01.users.dto.UserResponseDto;
-
-import ec.edu.ups.icc.fundamentos01.users.mappers.UserMapper;
-import ec.edu.ups.icc.fundamentos01.users.models.UserModel;
 import ec.edu.ups.icc.fundamentos01.users.services.UserService;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -25,7 +21,6 @@ public class UsersController {
 
     /*
      * Endpoint para listar todos los usuarios.
-     *
      * GET /users
      */
     @GetMapping
@@ -35,17 +30,15 @@ public class UsersController {
 
     /*
      * Endpoint para buscar un usuario por id.
-     *
      * GET /users/{id}
      */
     @GetMapping("/{id}")
-    public Object findOne(@PathVariable Long id) {
+    public UserResponseDto findOne(@PathVariable Long id) { // Corregido: Object -> UserResponseDto
         return service.findOne(id);
     }
 
     /*
      * Endpoint para crear un nuevo usuario.
-     *
      * POST /users
      */
     @PostMapping
@@ -55,37 +48,34 @@ public class UsersController {
 
     /*
      * Endpoint para actualizar completamente un usuario.
-     *
      * PUT /users/{id}
      */
     @PutMapping("/{id}")
-    public Object update(
-            @PathVariable Long id,
-            @RequestBody UpdateUserDto dto
+    public UserResponseDto update( // Corregido: Object -> UserResponseDto
+                                   @PathVariable Long id,
+                                   @RequestBody UpdateUserDto dto
     ) {
         return service.update(id, dto);
     }
 
     /*
      * Endpoint para actualizar parcialmente un usuario.
-     *
      * PATCH /users/{id}
      */
     @PatchMapping("/{id}")
-    public Object partialUpdate(
-            @PathVariable Long id,
-            @RequestBody PartialUpdateUserDto dto
+    public UserResponseDto partialUpdate( // Corregido: Object -> UserResponseDto
+                                          @PathVariable Long id,
+                                          @RequestBody PartialUpdateUserDto dto
     ) {
         return service.partialUpdate(id, dto);
     }
 
     /*
      * Endpoint para eliminar un usuario.
-     *
      * DELETE /users/{id}
      */
     @DeleteMapping("/{id}")
-    public Object delete(@PathVariable Long id) {
-        return service.delete(id);
+    public void delete(@PathVariable Long id) { // Corregido: void en lugar de Object, sin return
+        service.delete(id);
     }
 }
