@@ -5,6 +5,7 @@ import ec.edu.ups.icc.fundamentos01.users.dto.PartialUpdateUserDto;
 import ec.edu.ups.icc.fundamentos01.users.dto.UpdateUserDto;
 import ec.edu.ups.icc.fundamentos01.users.dto.UserResponseDto;
 import ec.edu.ups.icc.fundamentos01.users.services.UserService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -42,7 +43,7 @@ public class UsersController {
      * POST /users
      */
     @PostMapping
-    public UserResponseDto create(@RequestBody CreateUserDto dto) {
+    public UserResponseDto create(@Valid @RequestBody CreateUserDto dto) {
         return service.create(dto);
     }
 
