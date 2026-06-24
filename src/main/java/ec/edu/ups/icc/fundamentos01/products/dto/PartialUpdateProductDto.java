@@ -3,12 +3,12 @@ package ec.edu.ups.icc.fundamentos01.products.dto;
 public class PartialUpdateProductDto {
 
     private String productName;
-    private double price;
+    private Double price; // ¡Perfecto!
 
     public PartialUpdateProductDto() {
     }
 
-    public PartialUpdateProductDto(String productName, double price) {
+    public PartialUpdateProductDto(String productName, Double price) {
         this.productName = productName;
         this.price = price;
     }
@@ -21,11 +21,13 @@ public class PartialUpdateProductDto {
         this.productName = productName;
     }
 
-    public double getPrice() {
+    // Corregido: Ahora devuelve Double objeto
+    public Double getPrice() {
         return price;
     }
 
-    public void setPrice(double price) {
+    // Corregido: Ahora recibe Double objeto
+    public void setPrice(Double price) {
         this.price = price;
     }
 }

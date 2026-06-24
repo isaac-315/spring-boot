@@ -1,98 +1,103 @@
 package ec.edu.ups.icc.fundamentos01.products.services;
 
-
-import ec.edu.ups.icc.fundamentos01.core.dto.ErrorResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.CreateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.PartialUpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.UpdateProductDto;
+import ec.edu.ups.icc.fundamentos01.products.entity.ProductEntity;
 import ec.edu.ups.icc.fundamentos01.products.mappers.ProductMapper;
 import ec.edu.ups.icc.fundamentos01.products.models.ProductModel;
+import ec.edu.ups.icc.fundamentos01.products.repositories.ProductRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class ProductServiceImpl implements ProductService {
 
-    private List<ProductModel> products = new ArrayList<>();
-    private Long currentId = 1L;
+    private final ProductRepository productRepository;
+
+    // Corregido: Se asignaba la variable a sí misma por un typo en el constructor anterior
+    public ProductServiceImpl(ProductRepository productRepository) {
+        this.productRepository = productRepository;
+    }
 
     @Override
     public List<ProductResponseDto> findAll() {
-        return products.stream()
+        return productRepository.findAll()
+                .stream()
+                .map(ProductMapper::toModelFromEntity)
                 .map(ProductMapper::toResponse)
                 .toList();
     }
 
     @Override
-    public Object findOne(Long id) {
-        return products.stream()
-                .filter(product -> product.getId().equals(id))
-                .findFirst()
-                .map(product -> (Object) ProductMapper.toResponse(product))
-                .orElseGet(() -> new ErrorResponseDto("Product not found"));
+    public ProductResponseDto findOne(Long id) {
+        return productRepository.findById(id)
+                .map(ProductMapper::toModelFromEntity)
+                .map(ProductMapper::toResponse)
+                .orElseThrow(() -> new IllegalStateException("Product not found"));
     }
 
     @Override
     public ProductResponseDto create(CreateProductDto dto) {
+        // 1. DTO -> Modelo
+        ProductModel model = ProductMapper.toModelFromDTO(dto);
 
-        ProductModel product = ProductMapper.toModel(dto);
+        // 2. Modelo -> Entidad (aquí se hace la magia de double a BigDecimal)
+        ProductEntity entity = ProductMapper.toEntityFromModel(model);
 
-        product.setId(currentId);
-        currentId++;
+        // 3. Guardar en PostgreSQL de Docker
+        ProductEntity savedEntity = productRepository.save(entity);
 
-        products.add(product);
+        // 4. Entidad devuelta -> Modelo -> DTO de respuesta
+        ProductModel savedModel = ProductMapper.toModelFromEntity(savedEntity);
 
-        return ProductMapper.toResponse(product);
+        return ProductMapper.toResponse(savedModel);
     }
 
     @Override
-    public Object update(Long id, UpdateProductDto dto) {
-        ProductModel product = products.stream()
-                .filter(item -> item.getId().equals(id))
-                .findFirst()
-                .orElse(null);
+    public ProductResponseDto update(Long id, UpdateProductDto dto) {
+        ProductEntity entity = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalStateException("Product not found"));
 
-        if (product == null) {
-            return new ErrorResponseDto("Product not found");
-        }
+        entity.setProductName(dto.getProductName());
+        entity.setPrice(BigDecimal.valueOf(dto.getPrice())); // Conversión a BigDecimal
 
-        product.setProductName(dto.getProductName());
+        ProductEntity savedEntity = productRepository.save(entity);
+        ProductModel model = ProductMapper.toModelFromEntity(savedEntity);
 
-        return ProductMapper.toResponse(product);
+        return ProductMapper.toResponse(model);
     }
 
     @Override
-    public Object partialUpdate(Long id, PartialUpdateProductDto dto) {
-        ProductModel product = products.stream()
-                .filter(item -> item.getId().equals(id))
-                .findFirst()
-                .orElse(null);
-
-        if (product == null) {
-            return new ErrorResponseDto("Product not found");
-        }
+    public ProductResponseDto partialUpdate(Long id, PartialUpdateProductDto dto) {
+        ProductEntity entity = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalStateException("Product not found"));
 
         if (dto.getProductName() != null) {
-            product.setProductName(dto.getProductName());
+            entity.setProductName(dto.getProductName());
         }
 
-        return ProductMapper.toResponse(product);
+        if (dto.getPrice() != null) {
+            entity.setPrice(BigDecimal.valueOf(dto.getPrice())); // Conversión segura si viene el precio
+        }
+
+        ProductEntity savedEntity = productRepository.save(entity);
+        ProductModel model = ProductMapper.toModelFromEntity(savedEntity);
+
+        return ProductMapper.toResponse(model);
     }
 
     @Override
-    public Object delete(Long id) {
+    public void delete(Long id) {
+        ProductEntity entity = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalStateException("Product not found"));
 
-        boolean removed = products.removeIf(product -> product.getId().equals(id));
+        // Borrado lógico (Auditoría de tu BaseEntity)
+        entity.setDeleted(true);
 
-        if (!removed) {
-            return new ErrorResponseDto("Product not found");
-        }
-
-        return new Object() {
-            public String message = "Deleted successfully";
-        };
+        productRepository.save(entity);
     }
 }
