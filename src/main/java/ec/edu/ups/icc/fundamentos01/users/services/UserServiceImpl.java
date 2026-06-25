@@ -1,21 +1,19 @@
 package ec.edu.ups.icc.fundamentos01.users.services;
 
-import ec.edu.ups.icc.fundamentos01.core.dto.ErrorResponseDto;
-import ec.edu.ups.icc.fundamentos01.users.dto.CreateUserDto;
-import ec.edu.ups.icc.fundamentos01.users.dto.PartialUpdateUserDto;
-import ec.edu.ups.icc.fundamentos01.users.dto.UpdateUserDto;
-import ec.edu.ups.icc.fundamentos01.users.dto.UserResponseDto;
-import ec.edu.ups.icc.fundamentos01.users.entity.UserEntity; // Importación añadida
+import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.BadRequestException;
+import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.ConflictException;
+import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.NotFoundException;
+import ec.edu.ups.icc.fundamentos01.users.dto.*;
+import ec.edu.ups.icc.fundamentos01.users.entity.UserEntity;
 import ec.edu.ups.icc.fundamentos01.users.mappers.UserMapper;
-import ec.edu.ups.icc.fundamentos01.users.models.UserModel;
 import ec.edu.ups.icc.fundamentos01.users.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class UserServiceImpl implements UserService {
+
     private final UserRepository userRepository;
 
     public UserServiceImpl(UserRepository userRepository) {
@@ -26,78 +24,91 @@ public class UserServiceImpl implements UserService {
     public List<UserResponseDto> findAll() {
         return userRepository.findAll()
                 .stream()
-                .map(UserMapper::toModelFromEntity) // Corregido el nombre del método
+                .filter(user -> !user.isDeleted())
+                .map(UserMapper::toModelFromEntity)
                 .map(UserMapper::toResponse)
                 .toList();
     }
 
     @Override
     public UserResponseDto findOne(Long id) {
-        return userRepository.findById(id)
-                .map(UserMapper::toModelFromEntity)
-                .map(UserMapper::toResponse)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+        UserEntity entity = userRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("User Not Found"));
+
+        return UserMapper.toResponse(
+                UserMapper.toModelFromEntity(entity)
+        );
     }
 
     @Override
     public UserResponseDto create(CreateUserDto dto) {
-        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new IllegalStateException("Email already registered");
-        }
-        // Asumiendo que corregiste el typo de "toModelFormDTO" a "toModelFromDTO" en tu Mapper
-        UserModel model = UserMapper.toModelFromDTO(dto);
+        userRepository.findByEmail(dto.getEmail())
+                .filter(user -> !user.isDeleted())
+                .ifPresent(user -> {
+                    throw new ConflictException("Email already registered");
+                });
 
-        UserEntity entity = UserMapper.toEntityFromModel(model);
+        UserEntity entity = UserMapper.toEntityFromModel(
+                UserMapper.toModelFromDTO(dto)
+        );
 
-        UserEntity savedEntity = userRepository.save(entity);
+        UserEntity saved = userRepository.save(entity);
 
-        UserModel savedModel = UserMapper.toModelFromEntity(savedEntity);
-
-        return UserMapper.toResponse(savedModel);
+        return UserMapper.toResponse(
+                UserMapper.toModelFromEntity(saved)
+        );
     }
 
     @Override
     public UserResponseDto update(Long id, UpdateUserDto dto) {
-        UserEntity entity = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+        UserEntity entity = userRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("User Not Found"));
 
-        entity.setName(dto.getName());
-        entity.setEmail(dto.getEmail());
+        // Usamos el método estático del Mapper para actualizar name, email y password con "HASH_"
+        UserMapper.updateEntityFromDto(dto, entity);
 
-        UserEntity savedEntity = userRepository.save(entity);
+        UserEntity saved = userRepository.save(entity);
 
-        UserModel model = UserMapper.toModelFromEntity(savedEntity);
-
-        return UserMapper.toResponse(model);
+        return UserMapper.toResponse(
+                UserMapper.toModelFromEntity(saved)
+        );
     }
 
     @Override
     public UserResponseDto partialUpdate(Long id, PartialUpdateUserDto dto) {
-        UserEntity entity = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+        UserEntity entity = userRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("User Not Found"));
 
-        if (dto.getName() != null) {
-            entity.setName(dto.getName());
-        }
+        // Usamos el método estático del Mapper para manejar los nulos y el "HASH_" de la contraseña
+        UserMapper.partialUpdateEntityFromDto(dto, entity);
 
-        if (dto.getEmail() != null) {
-            entity.setEmail(dto.getEmail());
-        }
+        UserEntity saved = userRepository.save(entity);
 
-        UserEntity savedEntity = userRepository.save(entity);
-
-        UserModel model = UserMapper.toModelFromEntity(savedEntity);
-
-        return UserMapper.toResponse(model);
+        return UserMapper.toResponse(
+                UserMapper.toModelFromEntity(saved)
+        );
     }
 
     @Override
     public void delete(Long id) {
-        UserEntity entity = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+        UserEntity entity = userRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("User Not Found"));
 
         entity.setDeleted(true);
+        userRepository.save(entity);
+    }
 
+    @Override
+    public void changePassword(Long id, ChangePasswordDto dto) {
+        UserEntity entity = userRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        String expectedHash = "HASH_" + dto.getCurrentPassword();
+        if (!expectedHash.equals(entity.getPasswordHash())) {
+            throw new BadRequestException("La contraseña actual es incorrecta");
+        }
+
+        entity.setPasswordHash("HASH_" + dto.getNewPassword());
         userRepository.save(entity);
     }
 }

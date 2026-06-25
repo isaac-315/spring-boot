@@ -1,9 +1,6 @@
 package ec.edu.ups.icc.fundamentos01.users.controllers;
 
-import ec.edu.ups.icc.fundamentos01.users.dto.CreateUserDto;
-import ec.edu.ups.icc.fundamentos01.users.dto.PartialUpdateUserDto;
-import ec.edu.ups.icc.fundamentos01.users.dto.UpdateUserDto;
-import ec.edu.ups.icc.fundamentos01.users.dto.UserResponseDto;
+import ec.edu.ups.icc.fundamentos01.users.dto.*;
 import ec.edu.ups.icc.fundamentos01.users.services.UserService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -77,5 +74,17 @@ public class UsersController {
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) { // Corregido: void en lugar de Object, sin return
         service.delete(id);
+    }
+
+    /*
+     * Endpoint para cambiar la contraseña de un usuario.
+     * PATCH /users/{id}/change-password
+     */
+    @PatchMapping("/{id}/change-password")
+    public void changePassword(
+            @PathVariable Long id,
+            @Valid @RequestBody ChangePasswordDto dto
+    ) {
+        service.changePassword(id, dto);
     }
 }
