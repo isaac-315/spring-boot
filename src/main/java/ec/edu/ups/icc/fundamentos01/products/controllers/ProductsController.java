@@ -5,6 +5,7 @@ import ec.edu.ups.icc.fundamentos01.products.dto.PartialUpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.UpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.services.ProductService;
+import jakarta.validation.Valid; // ¡Anotación necesaria importada!
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,7 +34,7 @@ public class ProductsController {
      * GET /products/{id}
      */
     @GetMapping("/{id}")
-    public ProductResponseDto findOne(@PathVariable Long id) { // Corregido: Object -> ProductResponseDto
+    public ProductResponseDto findOne(@PathVariable Long id) {
         return service.findOne(id);
     }
 
@@ -42,7 +43,7 @@ public class ProductsController {
      * POST /products
      */
     @PostMapping
-    public ProductResponseDto create(@RequestBody CreateProductDto dto) {
+    public ProductResponseDto create(@Valid @RequestBody CreateProductDto dto) { // Activado con @Valid
         return service.create(dto);
     }
 
@@ -51,9 +52,9 @@ public class ProductsController {
      * PUT /products/{id}
      */
     @PutMapping("/{id}")
-    public ProductResponseDto update( // Corregido: Object -> ProductResponseDto
-                                      @PathVariable Long id,
-                                      @RequestBody UpdateProductDto dto
+    public ProductResponseDto update(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateProductDto dto // Activado con @Valid
     ) {
         return service.update(id, dto);
     }
@@ -63,9 +64,9 @@ public class ProductsController {
      * PATCH /products/{id}
      */
     @PatchMapping("/{id}")
-    public ProductResponseDto partialUpdate( // Corregido: Object -> ProductResponseDto
-                                             @PathVariable Long id,
-                                             @RequestBody PartialUpdateProductDto dto
+    public ProductResponseDto partialUpdate(
+            @PathVariable Long id,
+            @Valid @RequestBody PartialUpdateProductDto dto // Activado con @Valid
     ) {
         return service.partialUpdate(id, dto);
     }
@@ -75,7 +76,7 @@ public class ProductsController {
      * DELETE /products/{id}
      */
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) { // Corregido: void en lugar de Object, sin return
+    public void delete(@PathVariable Long id) {
         service.delete(id);
     }
 }

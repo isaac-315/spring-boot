@@ -1,9 +1,21 @@
 package ec.edu.ups.icc.fundamentos01.products.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
 public class PartialUpdateProductDto {
 
+    // Reglas de formato (Solo se ejecutan si el campo NO es nulo)
+    @Size(min = 3, max = 150, message = "El nombre debe tener entre 3 y 150 caracteres")
+    @Pattern(regexp = "^[a-zA-Z0-9 áéíóúÁÉÍÓÚñÑüÜ\\-]+$", message = "El nombre no debe contener caracteres especiales")
     private String productName;
-    private Double price; // ¡Perfecto!
+
+    // Reglas numéricas (Solo se ejecutan si el precio NO es nulo)
+    @DecimalMin(value = "0.0", message = "El precio mínimo debe ser 0.0")
+    @DecimalMax(value = "100000.00", message = "El precio no puede exceder los 100,000.00")
+    private Double price;
 
     public PartialUpdateProductDto() {
     }
@@ -21,12 +33,10 @@ public class PartialUpdateProductDto {
         this.productName = productName;
     }
 
-    // Corregido: Ahora devuelve Double objeto
     public Double getPrice() {
         return price;
     }
 
-    // Corregido: Ahora recibe Double objeto
     public void setPrice(Double price) {
         this.price = price;
     }

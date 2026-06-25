@@ -52,9 +52,9 @@ public class UsersController {
      * PUT /users/{id}
      */
     @PutMapping("/{id}")
-    public UserResponseDto update( // Corregido: Object -> UserResponseDto
-                                   @PathVariable Long id,
-                                   @RequestBody UpdateUserDto dto
+    public UserResponseDto update(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserDto dto // <-- ¡Listo!
     ) {
         return service.update(id, dto);
     }
@@ -64,13 +64,12 @@ public class UsersController {
      * PATCH /users/{id}
      */
     @PatchMapping("/{id}")
-    public UserResponseDto partialUpdate( // Corregido: Object -> UserResponseDto
-                                          @PathVariable Long id,
-                                          @RequestBody PartialUpdateUserDto dto
+    public UserResponseDto partialUpdate(
+            @PathVariable Long id,
+            @Valid @RequestBody PartialUpdateUserDto dto // <-- ¡También aquí!
     ) {
         return service.partialUpdate(id, dto);
     }
-
     /*
      * Endpoint para eliminar un usuario.
      * DELETE /users/{id}

@@ -41,6 +41,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponseDto create(CreateUserDto dto) {
+        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
+            throw new IllegalStateException("Email already registered");
+        }
         // Asumiendo que corregiste el typo de "toModelFormDTO" a "toModelFromDTO" en tu Mapper
         UserModel model = UserMapper.toModelFromDTO(dto);
 

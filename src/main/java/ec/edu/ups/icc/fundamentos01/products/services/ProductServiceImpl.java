@@ -18,7 +18,6 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
 
-    // Corregido: Se asignaba la variable a sí misma por un typo en el constructor anterior
     public ProductServiceImpl(ProductRepository productRepository) {
         this.productRepository = productRepository;
     }
@@ -27,6 +26,8 @@ public class ProductServiceImpl implements ProductService {
     public List<ProductResponseDto> findAll() {
         return productRepository.findAll()
                 .stream()
+                // Validación 2: Filtrar para NO devolver productos eliminados
+                .filter(entity -> !entity.isDeleted())
                 .map(ProductMapper::toModelFromEntity)
                 .map(ProductMapper::toResponse)
                 .toList();
@@ -34,24 +35,27 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponseDto findOne(Long id) {
-        return productRepository.findById(id)
-                .map(ProductMapper::toModelFromEntity)
-                .map(ProductMapper::toResponse)
+        ProductEntity entity = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Product not found"));
+
+        // Opcional: Si buscan un producto eliminado individualmente, lanzamos excepción
+        if (entity.isDeleted()) {
+            throw new IllegalStateException("Product is deleted and cannot be viewed");
+        }
+
+        ProductModel model = ProductMapper.toModelFromEntity(entity);
+        return ProductMapper.toResponse(model);
     }
 
     @Override
     public ProductResponseDto create(CreateProductDto dto) {
-        // 1. DTO -> Modelo
         ProductModel model = ProductMapper.toModelFromDTO(dto);
-
-        // 2. Modelo -> Entidad (aquí se hace la magia de double a BigDecimal)
         ProductEntity entity = ProductMapper.toEntityFromModel(model);
 
-        // 3. Guardar en PostgreSQL de Docker
-        ProductEntity savedEntity = productRepository.save(entity);
+        // Aseguramos que por defecto no nazca eliminado
+        entity.setDeleted(false);
 
-        // 4. Entidad devuelta -> Modelo -> DTO de respuesta
+        ProductEntity savedEntity = productRepository.save(entity);
         ProductModel savedModel = ProductMapper.toModelFromEntity(savedEntity);
 
         return ProductMapper.toResponse(savedModel);
@@ -62,8 +66,13 @@ public class ProductServiceImpl implements ProductService {
         ProductEntity entity = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Product not found"));
 
+        // Validación 1: No actualizar productos eliminados
+        if (entity.isDeleted()) {
+            throw new IllegalStateException("Cannot update a deleted product");
+        }
+
         entity.setProductName(dto.getProductName());
-        entity.setPrice(BigDecimal.valueOf(dto.getPrice())); // Conversión a BigDecimal
+        entity.setPrice(BigDecimal.valueOf(dto.getPrice()));
 
         ProductEntity savedEntity = productRepository.save(entity);
         ProductModel model = ProductMapper.toModelFromEntity(savedEntity);
@@ -76,12 +85,17 @@ public class ProductServiceImpl implements ProductService {
         ProductEntity entity = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Product not found"));
 
+        // Validación 1: No actualizar productos eliminados (aplica también a PATCH)
+        if (entity.isDeleted()) {
+            throw new IllegalStateException("Cannot update a deleted product");
+        }
+
         if (dto.getProductName() != null) {
             entity.setProductName(dto.getProductName());
         }
 
         if (dto.getPrice() != null) {
-            entity.setPrice(BigDecimal.valueOf(dto.getPrice())); // Conversión segura si viene el precio
+            entity.setPrice(BigDecimal.valueOf(dto.getPrice()));
         }
 
         ProductEntity savedEntity = productRepository.save(entity);
@@ -95,9 +109,13 @@ public class ProductServiceImpl implements ProductService {
         ProductEntity entity = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Product not found"));
 
-        // Borrado lógico (Auditoría de tu BaseEntity)
-        entity.setDeleted(true);
+        // Validación 3: No eliminar dos veces el mismo producto
+        if (entity.isDeleted()) {
+            throw new IllegalStateException("Product is already deleted");
+        }
 
+        // Borrado lógico
+        entity.setDeleted(true);
         productRepository.save(entity);
     }
 }

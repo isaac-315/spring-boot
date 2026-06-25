@@ -7,9 +7,9 @@ spring:
   application:
     name: fundamentos01
   datasource:
-    url: jdbc:postgresql://localhost:5432/devdb-nest
+    url: jdbc:postgresql://localhost:5433/devdb-nest
     username: ups
-    password: ups123
+    password: aSdF_010503
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

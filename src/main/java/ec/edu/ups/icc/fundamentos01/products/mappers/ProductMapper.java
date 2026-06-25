@@ -33,6 +33,8 @@ public class ProductMapper {
         // Conversión segura: Si el precio en la BD no es nulo, lo pasa a double
         if (entity.getPrice() != null) {
             model.setPrice(entity.getPrice().doubleValue());
+        } else {
+            model.setPrice(0.0); // Valor por defecto seguro si en BD es null
         }
 
         // Si tu ProductModel maneja los campos heredados de BaseEntity:
@@ -46,11 +48,10 @@ public class ProductMapper {
     // 3. De Modelo de negocio a Entidad de base de datos (Convierte double a BigDecimal)
     public static ProductEntity toEntityFromModel(ProductModel model) {
         ProductEntity entity = new ProductEntity();
-
         entity.setId(model.getId());
         entity.setProductName(model.getProductName());
 
-        // Conversión segura: Pasa el double del modelo al BigDecimal de la entidad
+        // Como es primitivo, pasa directo sin el 'if'
         entity.setPrice(BigDecimal.valueOf(model.getPrice()));
 
         return entity;
