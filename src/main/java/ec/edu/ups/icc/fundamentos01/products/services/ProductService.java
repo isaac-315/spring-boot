@@ -22,4 +22,8 @@ public interface ProductService {
 
     void delete(Long id);
 
+    List<ProductResponseDto> findByUserId(Long userId);
+
+    List<ProductResponseDto> findByCategoryId(Long categoryId);
+
 }

@@ -79,4 +79,20 @@ public class ProductsController {
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }
+
+    @GetMapping("/user/{userId}")
+    public List<ProductResponseDto> findByUserId(@PathVariable Long userId) {
+        return service.findByUserId(userId);
+    }
+
+    /*
+     * Endpoint para buscar productos por id de categoría.
+     *
+     * GET /products/category/{categoryId}
+     */
+    @GetMapping("/category/{categoryId}")
+    public List<ProductResponseDto> findByCategoryId(@PathVariable Long categoryId) {
+        return service.findByCategoryId(categoryId);
+    }
+
 }

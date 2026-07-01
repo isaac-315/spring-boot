@@ -1,43 +1,45 @@
 package ec.edu.ups.icc.fundamentos01.products.dto;
 
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 public class CreateProductDto {
 
-    // Regla mínima: Obligatorio, 3 a 150 caracteres
-    // Regla adicional (2): Evita caracteres especiales o scripts maliciosos
-    @NotBlank(message = "El nombre del producto es obligatorio")
+    @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 3, max = 150, message = "El nombre debe tener entre 3 y 150 caracteres")
-    @Pattern(regexp = "^[a-zA-Z0-9 áéíóúÁÉÍÓÚñÑüÜ\\-]+$", message = "El nombre no debe contener caracteres especiales")
-    private String productName;
+    private String name;
 
-    // Regla mínima: Obligatorio, mínimo 0
-    // Regla adicional (3): Evita que un número gigantesco rompa los límites de Postgres
     @NotNull(message = "El precio es obligatorio")
-    @DecimalMin(value = "0.0", message = "El precio mínimo debe ser 0.0")
-    @DecimalMax(value = "100000.00", message = "El precio no puede exceder los 100,000.00")
+    @DecimalMin(value = "0.0", inclusive = true, message = "El precio no puede ser negativo")
     private Double price;
+
+    @NotNull(message = "El stock es obligatorio")
+    @Min(value = 0, message = "El stock no puede ser negativo")
+    private Integer stock;
+
+    @NotNull(message = "El ID del usuario es obligatorio")
+    private Long userId;
+
+    @NotNull(message = "El ID de la categoría es obligatorio")
+    private Long categoryId;
 
 
     public CreateProductDto() {
     }
 
-    public CreateProductDto(String productName, Double price) {
-        this.productName = productName;
+    public CreateProductDto(String name, Double price, Integer stock, Long userId, Long categoryId) {
+        this.name = name;
         this.price = price;
+        this.stock = stock;
+        this.userId = userId;
+        this.categoryId = categoryId;
     }
 
-    public String getProductName() {
-        return productName;
+    public String getName() {
+        return name;
     }
 
-    public void setProductName(String productName) {
-        this.productName = productName;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Double getPrice() {
@@ -46,5 +48,29 @@ public class CreateProductDto {
 
     public void setPrice(Double price) {
         this.price = price;
+    }
+
+    public Integer getStock() {
+        return stock;
+    }
+
+    public void setStock(Integer stock) {
+        this.stock = stock;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
     }
 }

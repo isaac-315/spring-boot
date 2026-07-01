@@ -1,27 +1,46 @@
 package ec.edu.ups.icc.fundamentos01.products.entity;
 
+import ec.edu.ups.icc.fundamentos01.categories.entity.CategoryEntity;
 import ec.edu.ups.icc.fundamentos01.core.entities.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-
-import java.math.BigDecimal;
+import ec.edu.ups.icc.fundamentos01.users.entity.UserEntity;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "products")
 public class ProductEntity extends BaseEntity {
-    @Column(nullable = false, unique = true, length = 150)
+
+    // COLUMNA 1: Mapea a la columna física "name"
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    // COLUMNA 2: Mapea a la columna física "product_name"
+    @Column(name = "product_name", nullable = false)
     private String productName;
 
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
+    @Column(nullable = false)
+    private Double price;
+
+    @Column(nullable = false)
+    private Integer stock;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserEntity owner;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private CategoryEntity category;
 
     public ProductEntity() {
     }
 
-    public ProductEntity(String productName, BigDecimal price) {
-        this.productName = productName;
-        this.price = price;
+    // GETTERS Y SETTERS COMPLEMENTARIOS
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getProductName() {
@@ -32,11 +51,35 @@ public class ProductEntity extends BaseEntity {
         this.productName = productName;
     }
 
-    public BigDecimal getPrice() {
+    public Double getPrice() {
         return price;
     }
 
-    public void setPrice(BigDecimal price) {
+    public void setPrice(Double price) {
         this.price = price;
+    }
+
+    public Integer getStock() {
+        return stock;
+    }
+
+    public void setStock(Integer stock) {
+        this.stock = stock;
+    }
+
+    public UserEntity getOwner() {
+        return owner;
+    }
+
+    public void setOwner(UserEntity owner) {
+        this.owner = owner;
+    }
+
+    public CategoryEntity getCategory() {
+        return category;
+    }
+
+    public void setCategory(CategoryEntity category) {
+        this.category = category;
     }
 }

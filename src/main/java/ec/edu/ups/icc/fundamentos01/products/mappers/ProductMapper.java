@@ -4,67 +4,72 @@ import ec.edu.ups.icc.fundamentos01.products.dto.CreateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.entity.ProductEntity;
 import ec.edu.ups.icc.fundamentos01.products.models.ProductModel;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import ec.edu.ups.icc.fundamentos01.users.dto.UserResponseDto;
+import ec.edu.ups.icc.fundamentos01.categories.dto.CategoryResponseDto;
 
 public class ProductMapper {
 
-    // 1. De DTO de creación a Modelo de negocio
     public static ProductModel toModelFromDTO(CreateProductDto dto) {
         ProductModel model = new ProductModel();
-
-        model.setProductName(dto.getProductName());
+        model.setProductName(dto.getName());
         model.setPrice(dto.getPrice());
-
-        // Si tu ProductModel hereda de un BaseModel o maneja auditoría:
-        // model.setCreatedAt(LocalDateTime.now());
-
+        model.setStock(dto.getStock());
+        model.setUserId(dto.getUserId());
+        model.setCategoryId(dto.getCategoryId());
         return model;
     }
 
-    // 2. De Entidad (Base de datos / Docker) a Modelo de negocio (Convierte BigDecimal a double)
     public static ProductModel toModelFromEntity(ProductEntity entity) {
         ProductModel model = new ProductModel();
-
         model.setId(entity.getId());
-        model.setProductName(entity.getProductName());
+        model.setProductName(entity.getName());
+        model.setPrice(entity.getPrice());
+        model.setStock(entity.getStock());
 
-        // Conversión segura: Si el precio en la BD no es nulo, lo pasa a double
-        if (entity.getPrice() != null) {
-            model.setPrice(entity.getPrice().doubleValue());
-        } else {
-            model.setPrice(0.0); // Valor por defecto seguro si en BD es null
-        }
-
-        // Si tu ProductModel maneja los campos heredados de BaseEntity:
-        // model.setCreatedAt(entity.getCreatedAt());
-        // model.setUpdatedAt(entity.getUpdatedAt());
-        // model.setDeleted(entity.isDeleted());
+        if (entity.getOwner() != null) model.setUserId(entity.getOwner().getId());
+        if (entity.getCategory() != null) model.setCategoryId(entity.getCategory().getId());
 
         return model;
     }
 
-    // 3. De Modelo de negocio a Entidad de base de datos (Convierte double a BigDecimal)
-    public static ProductEntity toEntityFromModel(ProductModel model) {
-        ProductEntity entity = new ProductEntity();
-        entity.setId(model.getId());
-        entity.setProductName(model.getProductName());
+    // MAPEO FINAL DE RESPUESTA CON OBJETOS ANIDADOS
+    // Reemplaza el toResponse viejo por este que pasaste de tu guía:
 
-        // Como es primitivo, pasa directo sin el 'if'
-        entity.setPrice(BigDecimal.valueOf(model.getPrice()));
 
-        return entity;
-    }
 
-    // 4. De Modelo de negocio a DTO de Respuesta (Hacia Bruno / Angular)
-    public static ProductResponseDto toResponse(ProductModel model) {
-        ProductResponseDto response = new ProductResponseDto();
 
-        response.setId(model.getId());
-        response.setProductName(model.getProductName());
-        response.setPrice(model.getPrice());
+    /*
+     * Convierte ProductEntity a ProductResponseDto.
+     *
+     * Incluye datos anidados del usuario propietario y de la categoría.
+     */
+    private ProductResponseDto toResponse(ProductEntity entity) {
 
-        return response;
+        ProductResponseDto dto = new ProductResponseDto();
+
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setPrice(entity.getPrice());
+        dto.setStock(entity.getStock());
+        dto.setCreatedAt(entity.getCreatedAt());
+        dto.setUpdatedAt(entity.getUpdatedAt());
+
+        ProductResponseDto.UserSummaryDto ownerDto = new ProductResponseDto.UserSummaryDto();
+
+        ownerDto.setId(entity.getOwner().getId());
+        ownerDto.setName(entity.getOwner().getName());
+        ownerDto.setEmail(entity.getOwner().getEmail());
+
+        dto.setOwner(ownerDto);
+
+        ProductResponseDto.CategorySummaryDto categoryDto = new ProductResponseDto.CategorySummaryDto();
+
+        categoryDto.setId(entity.getCategory().getId());
+        categoryDto.setName(entity.getCategory().getName());
+        categoryDto.setDescription(entity.getCategory().getDescription());
+
+        dto.setCategory(categoryDto);
+
+        return dto;
     }
 }

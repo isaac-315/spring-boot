@@ -1,121 +1,215 @@
 package ec.edu.ups.icc.fundamentos01.products.services;
 
+import ec.edu.ups.icc.fundamentos01.categories.dto.CategoryResponseDto;
+import ec.edu.ups.icc.fundamentos01.categories.entity.CategoryEntity;
+import ec.edu.ups.icc.fundamentos01.categories.repositories.CategoryRepository;
+import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.ConflictException;
+import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.NotFoundException;
 import ec.edu.ups.icc.fundamentos01.products.dto.CreateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.PartialUpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.UpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.entity.ProductEntity;
-import ec.edu.ups.icc.fundamentos01.products.mappers.ProductMapper;
-import ec.edu.ups.icc.fundamentos01.products.models.ProductModel;
 import ec.edu.ups.icc.fundamentos01.products.repositories.ProductRepository;
+import ec.edu.ups.icc.fundamentos01.users.entity.UserEntity;
+import ec.edu.ups.icc.fundamentos01.users.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
 
-    public ProductServiceImpl(ProductRepository productRepository) {
+    public ProductServiceImpl(
+            ProductRepository productRepository,
+            UserRepository userRepository,
+            CategoryRepository categoryRepository
+    ) {
         this.productRepository = productRepository;
+        this.userRepository = userRepository;
+        this.categoryRepository = categoryRepository;
     }
 
+    // 1. IMPLEMENTACIÓN: findAll() requerido por la interfaz
     @Override
     public List<ProductResponseDto> findAll() {
         return productRepository.findAll()
                 .stream()
-                // Validación 2: Filtrar para NO devolver productos eliminados
                 .filter(entity -> !entity.isDeleted())
-                .map(ProductMapper::toModelFromEntity)
-                .map(ProductMapper::toResponse)
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // 2. IMPLEMENTACIÓN: findOne(id) requerido por la interfaz
+    @Override
+    public ProductResponseDto findOne(Long id) {
+        ProductEntity entity = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+
+        if (entity.isDeleted()) {
+            throw new NotFoundException("Product not found");
+        }
+
+        return this.toResponse(entity);
+    }
+
+    // 3. IMPLEMENTACIÓN: delete(id) requerido por la interfaz
+    @Override
+    public void delete(Long id) {
+        ProductEntity entity = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+
+        if (entity.isDeleted()) {
+            throw new ConflictException("Product is already deleted");
+        }
+
+        entity.setDeleted(true);
+        productRepository.save(entity);
+    }
+
+    @Override
+    public List<ProductResponseDto> findByUserId(Long userId) {
+        if (!userRepository.existsByIdAndDeletedFalse(userId)) {
+            throw new NotFoundException("User not found");
+        }
+
+        List<ProductEntity> list = productRepository.findByOwner_IdAndDeletedFalse(userId);
+
+        return list
+                .stream()
+                .map(this::toResponse)
                 .toList();
     }
 
     @Override
-    public ProductResponseDto findOne(Long id) {
-        ProductEntity entity = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("Product not found"));
-
-        // Opcional: Si buscan un producto eliminado individualmente, lanzamos excepción
-        if (entity.isDeleted()) {
-            throw new IllegalStateException("Product is deleted and cannot be viewed");
+    public List<ProductResponseDto> findByCategoryId(Long categoryId) {
+        if (!categoryRepository.existsByIdAndDeletedFalse(categoryId)) {
+            throw new NotFoundException("Category not found");
         }
 
-        ProductModel model = ProductMapper.toModelFromEntity(entity);
-        return ProductMapper.toResponse(model);
+        return productRepository.findByCategory_IdAndDeletedFalse(categoryId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Override
     public ProductResponseDto create(CreateProductDto dto) {
-        ProductModel model = ProductMapper.toModelFromDTO(dto);
-        ProductEntity entity = ProductMapper.toEntityFromModel(model);
+        UserEntity owner = userRepository.findById(dto.getUserId())
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
-        // Aseguramos que por defecto no nazca eliminado
-        entity.setDeleted(false);
+        if (owner.isDeleted()) {
+            throw new NotFoundException("User not found");
+        }
+
+        CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new NotFoundException("Category not found"));
+
+        if (category.isDeleted()) {
+            throw new NotFoundException("Category not found");
+        }
+
+        if (productRepository.findByNameIgnoreCaseAndDeletedFalse(dto.getName()).isPresent()) {
+            throw new ConflictException("Product name already registered");
+        }
+
+        ProductEntity entity = new ProductEntity();
+
+        // CORREGIDO: Asignamos el valor a ambas variables para satisfacer la estructura de tu tabla
+        entity.setName(dto.getName());
+        entity.setProductName(dto.getName());
+
+        entity.setPrice(dto.getPrice());
+        entity.setStock(dto.getStock());
+        entity.setOwner(owner);
+        entity.setCategory(category);
 
         ProductEntity savedEntity = productRepository.save(entity);
-        ProductModel savedModel = ProductMapper.toModelFromEntity(savedEntity);
-
-        return ProductMapper.toResponse(savedModel);
+        return this.toResponse(savedEntity);
     }
 
     @Override
     public ProductResponseDto update(Long id, UpdateProductDto dto) {
-        ProductEntity entity = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("Product not found"));
+        ProductEntity entity = productRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        // Validación 1: No actualizar productos eliminados
-        if (entity.isDeleted()) {
-            throw new IllegalStateException("Cannot update a deleted product");
+        CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new NotFoundException("Category not found"));
+
+        if (category.isDeleted()) {
+            throw new NotFoundException("Category not found");
         }
 
-        entity.setProductName(dto.getProductName());
-        entity.setPrice(BigDecimal.valueOf(dto.getPrice()));
+        entity.setName(dto.getName());
+        entity.setPrice(dto.getPrice());
+        entity.setStock(dto.getStock());
+        entity.setCategory(category);
 
         ProductEntity savedEntity = productRepository.save(entity);
-        ProductModel model = ProductMapper.toModelFromEntity(savedEntity);
-
-        return ProductMapper.toResponse(model);
+        return this.toResponse(savedEntity);
     }
 
     @Override
     public ProductResponseDto partialUpdate(Long id, PartialUpdateProductDto dto) {
-        ProductEntity entity = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("Product not found"));
+        ProductEntity entity = productRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        // Validación 1: No actualizar productos eliminados (aplica también a PATCH)
-        if (entity.isDeleted()) {
-            throw new IllegalStateException("Cannot update a deleted product");
-        }
-
-        if (dto.getProductName() != null) {
-            entity.setProductName(dto.getProductName());
+        if (dto.getName() != null) {
+            entity.setName(dto.getName());
         }
 
         if (dto.getPrice() != null) {
-            entity.setPrice(BigDecimal.valueOf(dto.getPrice()));
+            entity.setPrice(dto.getPrice());
+        }
+
+        if (dto.getStock() != null) {
+            entity.setStock(dto.getStock());
+        }
+
+        if (dto.getCategoryId() != null) {
+            CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+                    .orElseThrow(() -> new NotFoundException("Category not found"));
+
+            if (category.isDeleted()) {
+                throw new NotFoundException("Category not found");
+            }
+
+            entity.setCategory(category);
         }
 
         ProductEntity savedEntity = productRepository.save(entity);
-        ProductModel model = ProductMapper.toModelFromEntity(savedEntity);
-
-        return ProductMapper.toResponse(model);
+        return this.toResponse(savedEntity);
     }
 
-    @Override
-    public void delete(Long id) {
-        ProductEntity entity = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("Product not found"));
+    // 14.11. MÉTODO HELPER CORREGIDO CON LOS TIPOS EXACTOS REQUERIDOS
+    private ProductResponseDto toResponse(ProductEntity entity) {
+        ProductResponseDto dto = new ProductResponseDto();
 
-        // Validación 3: No eliminar dos veces el mismo producto
-        if (entity.isDeleted()) {
-            throw new IllegalStateException("Product is already deleted");
-        }
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setPrice(entity.getPrice());
+        dto.setStock(entity.getStock());
+        dto.setCreatedAt(entity.getCreatedAt());
+        dto.setUpdatedAt(entity.getUpdatedAt());
 
-        // Borrado lógico
-        entity.setDeleted(true);
-        productRepository.save(entity);
+        // 1. Instanciamos el tipo exacto que pide tu DTO para el Owner
+        ProductResponseDto.UserSummaryDto ownerDto = new ProductResponseDto.UserSummaryDto();
+        ownerDto.setId(entity.getOwner().getId());
+        ownerDto.setName(entity.getOwner().getName());
+        ownerDto.setEmail(entity.getOwner().getEmail());
+        dto.setOwner(ownerDto);
+
+        // 2. Instanciamos el tipo exacto que pide tu DTO para la Categoría (CategorySummaryDto)
+        ProductResponseDto.CategorySummaryDto categoryDto = new ProductResponseDto.CategorySummaryDto();
+        categoryDto.setId(entity.getCategory().getId());
+        categoryDto.setName(entity.getCategory().getName());
+        categoryDto.setDescription(entity.getCategory().getDescription());
+        dto.setCategory(categoryDto); // <-- Ahora sí coinciden los tipos perfectamente
+
+        return dto;
     }
 }
