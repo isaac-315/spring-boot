@@ -2,7 +2,11 @@ package ec.edu.ups.icc.fundamentos01.categories.entity;
 
 import ec.edu.ups.icc.fundamentos01.core.entities.BaseEntity;
 import ec.edu.ups.icc.fundamentos01.products.entity.ProductEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.Table;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -18,42 +22,26 @@ public class CategoryEntity extends BaseEntity {
     private String description;
 
     /*
-     * CORREGIDO: Relación inversa Uno a Muchos con productos.
-     * * mappedBy apunta a "category" (en singular), que es el nombre exacto
-     * del atributo dentro de tu clase ProductEntity.
+     * Relación inversa con productos.
+     * mappedBy indica que la relación principal se define
+     * en el atributo "categories" de ProductEntity.
      */
-    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
+    @ManyToMany(mappedBy = "categories", fetch = FetchType.LAZY)
     private Set<ProductEntity> products = new HashSet<>();
 
-    public CategoryEntity() {
-    }
+    public CategoryEntity() {}
 
     public CategoryEntity(String name, String description) {
         this.name = name;
         this.description = description;
     }
 
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Set<ProductEntity> getProducts() {
-        return products;
-    }
-
-    public void setProducts(Set<ProductEntity> products) {
-        this.products = products;
-    }
+    public Set<ProductEntity> getProducts() { return products; }
+    public void setProducts(Set<ProductEntity> products) { this.products = products; }
 }

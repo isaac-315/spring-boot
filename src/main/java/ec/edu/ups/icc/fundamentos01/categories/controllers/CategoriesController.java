@@ -4,27 +4,28 @@ import ec.edu.ups.icc.fundamentos01.categories.dto.CategoryResponseDto;
 import ec.edu.ups.icc.fundamentos01.categories.dto.CreateCategoryDto;
 import ec.edu.ups.icc.fundamentos01.categories.dto.UpdateCategoryDto;
 import ec.edu.ups.icc.fundamentos01.categories.service.CategoryService;
+import ec.edu.ups.icc.fundamentos01.products.dto.ProductFilterByUserDto;
+import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
+import ec.edu.ups.icc.fundamentos01.products.services.ProductService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/*
- * Controlador REST encargado de exponer los endpoints HTTP
- * para la gestión de categorías.
- */
-/*
- * Controlador REST encargado de exponer los endpoints HTTP
- * para la gestión de categorías.
- */
 @RestController
 @RequestMapping("/categories")
 public class CategoriesController {
 
     private final CategoryService service;
+    private final ProductService productService;
 
-    public CategoriesController(CategoryService service) {
+    public CategoriesController(
+            CategoryService service,
+            ProductService productService
+    ) {
         this.service = service;
+        this.productService = productService;
     }
 
     @GetMapping
@@ -51,8 +52,16 @@ public class CategoriesController {
     }
 
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }
 
+    @GetMapping("/{id}/products")
+    public List<ProductResponseDto> findProductsByCategory(
+            @PathVariable Long id,
+            @Valid @ModelAttribute ProductFilterByUserDto filters
+    ) {
+        return productService.findByCategoryIdWithFilters(id, filters);
+    }
 }

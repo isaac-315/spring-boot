@@ -9,12 +9,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-/*
- * Repositorio encargado de gestionar la persistencia
- * de productos usando Spring Data JPA.
- *
- * Incluye consultas usando relaciones con UserEntity y CategoryEntity.
- */
 @Repository
 public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
 
@@ -26,21 +20,20 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
 
     List<ProductEntity> findByOwner_IdAndDeletedFalse(Long ownerId);
 
-    List<ProductEntity> findByCategory_IdAndDeletedFalse(Long categoryId);
-
-    List<ProductEntity> findByCategory_NameIgnoreCaseAndDeletedFalse(String categoryName);
+    // CORREGIDO: De vuelta al plural porque la entidad usa Set<CategoryEntity> categories
+    List<ProductEntity> findByCategories_IdAndDeletedFalse(Long categoryId);
 
     @Query("""
-            SELECT p
+            SELECT DISTINCT p
             FROM ProductEntity p
+            LEFT JOIN p.categories c
             WHERE p.deleted = false
               AND p.owner.id = :userId
               AND p.owner.deleted = false
               AND (COALESCE(:name, '') = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', COALESCE(:name, ''), '%')))
               AND (:minPrice IS NULL OR p.price >= :minPrice)
               AND (:maxPrice IS NULL OR p.price <= :maxPrice)
-              AND (:categoryId IS NULL OR p.category.id = :categoryId)
-              AND (:categoryId IS NULL OR p.category.deleted = false)
+              AND (:categoryId IS NULL OR (c.id = :categoryId AND c.deleted = false))
             """)
     List<ProductEntity> findByOwnerIdWithFilters(
             @Param("userId") Long userId,
@@ -50,4 +43,24 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
             @Param("categoryId") Long categoryId
     );
 
+    @Query("""
+            SELECT DISTINCT p
+            FROM ProductEntity p
+            JOIN p.categories c
+            WHERE p.deleted = false
+              AND c.id = :categoryId
+              AND c.deleted = false
+              AND p.owner.deleted = false
+              AND (COALESCE(:name, '') = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', COALESCE(:name, ''), '%')))
+              AND (:minPrice IS NULL OR p.price >= :minPrice)
+              AND (:maxPrice IS NULL OR p.price <= :maxPrice)
+              AND (:userId IS NULL OR p.owner.id = :userId)
+            """)
+    List<ProductEntity> findByCategoryIdWithFilters(
+            @Param("categoryId") Long categoryId,
+            @Param("name") String name,
+            @Param("minPrice") Double minPrice,
+            @Param("maxPrice") Double maxPrice,
+            @Param("userId") Long userId
+    );
 }

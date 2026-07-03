@@ -18,66 +18,42 @@ public class ProductFilterByUserDto {
     @Min(value = 1, message = "El ID de categoría debe ser mayor a 0")
     private Long categoryId;
 
+    @Min(value = 1, message = "El ID de usuario debe ser mayor a 0")
+    private Long userId;
 
-    /*
-     * Valida que el rango de precios sea coherente.
-     *
-     * Si ambos valores existen, maxPrice debe ser mayor o igual a minPrice.
-     */
+    public ProductFilterByUserDto() {}
+
+    public ProductFilterByUserDto(String name, Double minPrice, Double maxPrice, Long categoryId, Long userId) {
+        this.name = name;
+        this.minPrice = minPrice;
+        this.maxPrice = maxPrice;
+        this.categoryId = categoryId;
+        this.userId = userId;
+    }
+
     public boolean hasValidPriceRange() {
         if (minPrice != null && maxPrice != null) {
             return maxPrice >= minPrice;
         }
-
         return true;
     }
 
-    /*
-     * Retorna true si el filtro name viene vacío.
-     */
     public boolean hasEmptyName() {
         return name == null || name.isBlank();
     }
 
-    public ProductFilterByUserDto() {
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public ProductFilterByUserDto(String name, Double minPrice, Double maxPrice, Long categoryId) {
-        this.name = name;
-        this.minPrice = minPrice;
-        this.maxPrice = maxPrice;
-        this.categoryId = categoryId;
-    }
+    public Double getMinPrice() { return minPrice; }
+    public void setMinPrice(Double minPrice) { this.minPrice = minPrice; }
 
-    public String getName() {
-        return name;
-    }
+    public Double getMaxPrice() { return maxPrice; }
+    public void setMaxPrice(Double maxPrice) { this.maxPrice = maxPrice; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
 
-    public Double getMinPrice() {
-        return minPrice;
-    }
-
-    public void setMinPrice(Double minPrice) {
-        this.minPrice = minPrice;
-    }
-
-    public Double getMaxPrice() {
-        return maxPrice;
-    }
-
-    public void setMaxPrice(Double maxPrice) {
-        this.maxPrice = maxPrice;
-    }
-
-    public Long getCategoryId() {
-        return categoryId;
-    }
-
-    public void setCategoryId(Long categoryId) {
-        this.categoryId = categoryId;
-    }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 }

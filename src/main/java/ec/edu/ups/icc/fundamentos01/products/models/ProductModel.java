@@ -1,71 +1,84 @@
 package ec.edu.ups.icc.fundamentos01.products.models;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 public class ProductModel {
 
     private Long id;
-    private String productName;
-    private double price;
-    private Integer stock;      // Añadido
-    private Long userId;        // Añadido para capturar el propietario
-    private Long categoryId;    // Añadido para capturar la categoría
+    private String name;
+    private Double price;
+    private Integer stock;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private boolean deleted;
 
-    public ProductModel() {
-    }
+    private Long ownerId;
+    private String ownerName;
+    private String ownerEmail;
 
-    public ProductModel(Long id, String productName, double price, Integer stock, Long userId, Long categoryId) {
-        this.id = id;
-        this.productName = productName;
-        this.price = price;
-        this.stock = stock;
-        this.userId = userId;
-        this.categoryId = categoryId;
-    }
+    private List<CategoryInfo> categories = new ArrayList<>();
 
-    public Long getId() {
-        return id;
-    }
+    public ProductModel() {}
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public String getProductName() {
-        return productName;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setProductName(String productName) {
-        this.productName = productName;
-    }
+    public Double getPrice() { return price; }
+    public void setPrice(Double price) { this.price = price; }
 
-    public double getPrice() {
-        return price;
-    }
+    public Integer getStock() { return stock; }
+    public void setStock(Integer stock) { this.stock = stock; }
 
-    public void setPrice(double price) {
-        this.price = price;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public Integer getStock() {
-        return stock;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public void setStock(Integer stock) {
-        this.stock = stock;
-    }
+    public boolean isDeleted() { return deleted; }
+    public void setDeleted(boolean deleted) { this.deleted = deleted; }
 
-    public Long getUserId() {
-        return userId;
-    }
+    public Long getOwnerId() { return ownerId; }
+    public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
+    public String getOwnerName() { return ownerName; }
+    public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
 
-    public Long getCategoryId() {
-        return categoryId;
-    }
+    public String getOwnerEmail() { return ownerEmail; }
+    public void setOwnerEmail(String ownerEmail) { this.ownerEmail = ownerEmail; }
 
-    public void setCategoryId(Long categoryId) {
-        this.categoryId = categoryId;
+    public List<CategoryInfo> getCategories() { return categories; }
+    public void setCategories(List<CategoryInfo> categories) { this.categories = categories; }
+
+    /*
+     * Representa los datos mínimos de una categoría
+     * dentro del modelo de producto.
+     */
+    public static class CategoryInfo {
+        private Long id;
+        private String name;
+        private String description;
+
+        public CategoryInfo() {}
+
+        public CategoryInfo(Long id, String name, String description) {
+            this.id = id;
+            this.name = name;
+            this.description = description;
+        }
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
     }
 }

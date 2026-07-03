@@ -1,52 +1,33 @@
 package ec.edu.ups.icc.fundamentos01.products.mappers;
 
+import ec.edu.ups.icc.fundamentos01.categories.dto.CategoryResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.CreateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.entity.ProductEntity;
 import ec.edu.ups.icc.fundamentos01.products.models.ProductModel;
 import ec.edu.ups.icc.fundamentos01.users.dto.UserResponseDto;
-import ec.edu.ups.icc.fundamentos01.categories.dto.CategoryResponseDto;
+
+import java.util.stream.Collectors;
 
 public class ProductMapper {
 
+    // 1. Usado en Service.create()
     public static ProductModel toModelFromDTO(CreateProductDto dto) {
+        if (dto == null) return null;
+
         ProductModel model = new ProductModel();
-        model.setProductName(dto.getName());
+        model.setName(dto.getName());
         model.setPrice(dto.getPrice());
         model.setStock(dto.getStock());
-        model.setUserId(dto.getUserId());
-        model.setCategoryId(dto.getCategoryId());
+        // Aquí no seteamos categorías porque el Service lo maneja manualmente
         return model;
     }
 
-    public static ProductModel toModelFromEntity(ProductEntity entity) {
-        ProductModel model = new ProductModel();
-        model.setId(entity.getId());
-        model.setProductName(entity.getName());
-        model.setPrice(entity.getPrice());
-        model.setStock(entity.getStock());
-
-        if (entity.getOwner() != null) model.setUserId(entity.getOwner().getId());
-        if (entity.getCategory() != null) model.setCategoryId(entity.getCategory().getId());
-
-        return model;
-    }
-
-    // MAPEO FINAL DE RESPUESTA CON OBJETOS ANIDADOS
-    // Reemplaza el toResponse viejo por este que pasaste de tu guía:
-
-
-
-
-    /*
-     * Convierte ProductEntity a ProductResponseDto.
-     *
-     * Incluye datos anidados del usuario propietario y de la categoría.
-     */
-    private ProductResponseDto toResponse(ProductEntity entity) {
+    // 2. Usado en Service.findAll(), findOne(), etc. (La firma que el Service espera)
+    public static ProductResponseDto toResponse(ProductEntity entity) {
+        if (entity == null) return null;
 
         ProductResponseDto dto = new ProductResponseDto();
-
         dto.setId(entity.getId());
         dto.setName(entity.getName());
         dto.setPrice(entity.getPrice());
@@ -54,21 +35,27 @@ public class ProductMapper {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
 
-        ProductResponseDto.UserSummaryDto ownerDto = new ProductResponseDto.UserSummaryDto();
+        // Mapeo del Owner (UserEntity -> UserResponseDto)
+        if (entity.getOwner() != null) {
+            UserResponseDto userDto = new UserResponseDto();
+            userDto.setId(entity.getOwner().getId());
+            userDto.setName(entity.getOwner().getName());
+            userDto.setEmail(entity.getOwner().getEmail());
+            dto.setOwner(userDto);
+        }
 
-        ownerDto.setId(entity.getOwner().getId());
-        ownerDto.setName(entity.getOwner().getName());
-        ownerDto.setEmail(entity.getOwner().getEmail());
-
-        dto.setOwner(ownerDto);
-
-        ProductResponseDto.CategorySummaryDto categoryDto = new ProductResponseDto.CategorySummaryDto();
-
-        categoryDto.setId(entity.getCategory().getId());
-        categoryDto.setName(entity.getCategory().getName());
-        categoryDto.setDescription(entity.getCategory().getDescription());
-
-        dto.setCategory(categoryDto);
+        // Mapeo de Categorías (Set<CategoryEntity> -> List<CategoryResponseDto>)
+        if (entity.getCategories() != null && !entity.getCategories().isEmpty()) {
+            dto.setCategories(entity.getCategories().stream()
+                    .map(c -> {
+                        CategoryResponseDto catDto = new CategoryResponseDto();
+                        catDto.setId(c.getId());
+                        catDto.setName(c.getName());
+                        catDto.setDescription(c.getDescription());
+                        return catDto;
+                    })
+                    .collect(Collectors.toList()));
+        }
 
         return dto;
     }

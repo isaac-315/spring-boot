@@ -1,7 +1,13 @@
 package ec.edu.ups.icc.fundamentos01.products.dto;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
+import java.util.Set;
 
 public class UpdateProductDto {
 
@@ -17,48 +23,27 @@ public class UpdateProductDto {
     @Min(value = 0, message = "El stock no puede ser negativo")
     private Integer stock;
 
-    @NotNull(message = "El ID de la categoría es obligatorio")
-    private Long categoryId;
+    @NotEmpty(message = "Debe seleccionar al menos una categoría")
+    private Set<Long> categoryIds;
 
-    public UpdateProductDto() {
-    }
+    public UpdateProductDto() {}
 
-    public UpdateProductDto(String name, Double price, Integer stock, Long categoryId) {
+    public UpdateProductDto(String name, Double price, Integer stock, Set<Long> categoryIds) {
         this.name = name;
         this.price = price;
         this.stock = stock;
-        this.categoryId = categoryId;
+        this.categoryIds = categoryIds;
     }
 
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public Double getPrice() { return price; }
+    public void setPrice(Double price) { this.price = price; }
 
-    public Double getPrice() {
-        return price;
-    }
+    public Integer getStock() { return stock; }
+    public void setStock(Integer stock) { this.stock = stock; }
 
-    public void setPrice(Double price) {
-        this.price = price;
-    }
-
-    public Integer getStock() {
-        return stock;
-    }
-
-    public void setStock(Integer stock) {
-        this.stock = stock;
-    }
-
-    public Long getCategoryId() {
-        return categoryId;
-    }
-
-    public void setCategoryId(Long categoryId) {
-        this.categoryId = categoryId;
-    }
+    public Set<Long> getCategoryIds() { return categoryIds; }
+    public void setCategoryIds(Set<Long> categoryIds) { this.categoryIds = categoryIds; }
 }

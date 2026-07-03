@@ -2,6 +2,8 @@ package ec.edu.ups.icc.fundamentos01.products.dto;
 
 import jakarta.validation.constraints.*;
 
+import java.util.Set;
+
 public class CreateProductDto {
 
     @NotBlank(message = "El nombre es obligatorio")
@@ -19,19 +21,19 @@ public class CreateProductDto {
     @NotNull(message = "El ID del usuario es obligatorio")
     private Long userId;
 
-    @NotNull(message = "El ID de la categoría es obligatorio")
-    private Long categoryId;
+    @NotEmpty(message = "Debe seleccionar al menos una categoría")
+    private Set<Long> categoryIds;
 
 
     public CreateProductDto() {
     }
 
-    public CreateProductDto(String name, Double price, Integer stock, Long userId, Long categoryId) {
+    public CreateProductDto(String name, Double price, Integer stock, Long userId, Set<Long> categoryIds) {
         this.name = name;
         this.price = price;
         this.stock = stock;
         this.userId = userId;
-        this.categoryId = categoryId;
+        this.categoryIds = categoryIds;
     }
 
     public String getName() {
@@ -66,11 +68,11 @@ public class CreateProductDto {
         this.userId = userId;
     }
 
-    public Long getCategoryId() {
-        return categoryId;
+    public Set<Long> getCategoryIds() {
+        return categoryIds;
     }
 
-    public void setCategoryId(Long categoryId) {
-        this.categoryId = categoryId;
+    public void setCategoryIds(Set<Long> categoryIds) {
+        this.categoryIds = categoryIds;
     }
 }
