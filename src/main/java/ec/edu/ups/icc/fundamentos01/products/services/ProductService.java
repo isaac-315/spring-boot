@@ -1,9 +1,6 @@
 package ec.edu.ups.icc.fundamentos01.products.services;
 
-import ec.edu.ups.icc.fundamentos01.products.dto.CreateProductDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.PartialUpdateProductDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.UpdateProductDto;
+import ec.edu.ups.icc.fundamentos01.products.dto.*;
 
 
 import java.util.List;
@@ -25,5 +22,10 @@ public interface ProductService {
     List<ProductResponseDto> findByUserId(Long userId);
 
     List<ProductResponseDto> findByCategoryId(Long categoryId);
+
+    List<ProductResponseDto> findByUserIdWithFilters(
+            Long userId,
+            ProductFilterByUserDto filters
+    );
 
 }

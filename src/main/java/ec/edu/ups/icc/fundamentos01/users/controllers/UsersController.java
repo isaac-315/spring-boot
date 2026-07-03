@@ -1,5 +1,8 @@
 package ec.edu.ups.icc.fundamentos01.users.controllers;
 
+import ec.edu.ups.icc.fundamentos01.products.dto.ProductFilterByUserDto;
+import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
+import ec.edu.ups.icc.fundamentos01.products.services.ProductService;
 import ec.edu.ups.icc.fundamentos01.users.dto.*;
 import ec.edu.ups.icc.fundamentos01.users.services.UserService;
 import jakarta.validation.Valid;
@@ -86,5 +89,36 @@ public class UsersController {
             @Valid @RequestBody ChangePasswordDto dto
     ) {
         service.changePassword(id, dto);
+    }
+
+    @RestController
+    @RequestMapping("/users")
+    public class UserProductsController {
+
+        private final ProductService productService;
+
+        public UserProductsController(
+
+                ProductService productService
+        ) {
+            this.productService = productService;
+        }
+
+
+        /*
+         * Endpoint para consultar productos de un usuario.
+         *
+         * GET /api/users/{id}/products
+         * GET /api/users/{id}/products?name=laptop
+         * GET /api/users/{id}/products?minPrice=500&maxPrice=1500
+         * GET /api/users/{id}/products?categoryId=2
+         */
+        @GetMapping("/{id}/products")
+        public List<ProductResponseDto> findProductsByUser(
+                @PathVariable Long id,
+                @Valid @ModelAttribute ProductFilterByUserDto filters
+        ) {
+            return productService.findByUserIdWithFilters(id, filters);
+        }
     }
 }

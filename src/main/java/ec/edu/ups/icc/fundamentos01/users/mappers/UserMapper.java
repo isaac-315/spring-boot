@@ -36,7 +36,6 @@ public class UserMapper {
     public static UserEntity toEntityFromModel(UserModel model) {
         UserEntity entity = new UserEntity();
         entity.setId(model.getId());
-        entity.setName(model.getName());
         entity.setEmail(model.getEmail());
         entity.setPasswordHash(model.getPasswordHash());
         return entity;

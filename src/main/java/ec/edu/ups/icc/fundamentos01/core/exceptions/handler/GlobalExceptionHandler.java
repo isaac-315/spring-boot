@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import org.springframework.validation.BindException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -67,6 +68,30 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
+    }
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ErrorResponse> handleBindException(
+            BindException ex,
+            HttpServletRequest request
+    ) {
+        Map<String, String> errors = new HashMap<>();
+
+        ex.getBindingResult()
+                .getFieldErrors()
+                .forEach(error ->
+                        errors.put(error.getField(), error.getDefaultMessage())
+                );
+
+        ErrorResponse response = new ErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "Parámetros de consulta inválidos",
+                request.getRequestURI(),
+                errors
+        );
+
+        return ResponseEntity
+                .badRequest()
                 .body(response);
     }
 }

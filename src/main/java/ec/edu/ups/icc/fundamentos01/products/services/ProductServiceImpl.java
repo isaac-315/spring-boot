@@ -1,14 +1,11 @@
 package ec.edu.ups.icc.fundamentos01.products.services;
 
-import ec.edu.ups.icc.fundamentos01.categories.dto.CategoryResponseDto;
 import ec.edu.ups.icc.fundamentos01.categories.entity.CategoryEntity;
 import ec.edu.ups.icc.fundamentos01.categories.repositories.CategoryRepository;
 import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.ConflictException;
 import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.NotFoundException;
-import ec.edu.ups.icc.fundamentos01.products.dto.CreateProductDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.PartialUpdateProductDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.UpdateProductDto;
+import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.BadRequestException;
+import ec.edu.ups.icc.fundamentos01.products.dto.*;
 import ec.edu.ups.icc.fundamentos01.products.entity.ProductEntity;
 import ec.edu.ups.icc.fundamentos01.products.repositories.ProductRepository;
 import ec.edu.ups.icc.fundamentos01.users.entity.UserEntity;
@@ -71,6 +68,7 @@ public class ProductServiceImpl implements ProductService {
         productRepository.save(entity);
     }
 
+    // 4. IMPLEMENTACIÓN: findByUserId(id) sin filtros
     @Override
     public List<ProductResponseDto> findByUserId(Long userId) {
         if (!userRepository.existsByIdAndDeletedFalse(userId)) {
@@ -85,6 +83,7 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
     }
 
+    // 5. IMPLEMENTACIÓN: findByCategoryId(id)
     @Override
     public List<ProductResponseDto> findByCategoryId(Long categoryId) {
         if (!categoryRepository.existsByIdAndDeletedFalse(categoryId)) {
@@ -97,6 +96,7 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
     }
 
+    // 6. IMPLEMENTACIÓN: create(dto) con validaciones completas de negocio
     @Override
     public ProductResponseDto create(CreateProductDto dto) {
         UserEntity owner = userRepository.findById(dto.getUserId())
@@ -119,10 +119,8 @@ public class ProductServiceImpl implements ProductService {
 
         ProductEntity entity = new ProductEntity();
 
-        // CORREGIDO: Asignamos el valor a ambas variables para satisfacer la estructura de tu tabla
         entity.setName(dto.getName());
         entity.setProductName(dto.getName());
-
         entity.setPrice(dto.getPrice());
         entity.setStock(dto.getStock());
         entity.setOwner(owner);
@@ -132,6 +130,7 @@ public class ProductServiceImpl implements ProductService {
         return this.toResponse(savedEntity);
     }
 
+    // 7. IMPLEMENTACIÓN: update(id, dto) completo
     @Override
     public ProductResponseDto update(Long id, UpdateProductDto dto) {
         ProductEntity entity = productRepository.findByIdAndDeletedFalse(id)
@@ -153,6 +152,7 @@ public class ProductServiceImpl implements ProductService {
         return this.toResponse(savedEntity);
     }
 
+    // 8. IMPLEMENTACIÓN: partialUpdate(id, dto) dinámico
     @Override
     public ProductResponseDto partialUpdate(Long id, PartialUpdateProductDto dto) {
         ProductEntity entity = productRepository.findByIdAndDeletedFalse(id)
@@ -185,7 +185,36 @@ public class ProductServiceImpl implements ProductService {
         return this.toResponse(savedEntity);
     }
 
-    // 14.11. MÉTODO HELPER CORREGIDO CON LOS TIPOS EXACTOS REQUERIDOS
+    // 9. IMPLEMENTACIÓN: Búsqueda avanzada de productos por usuario con filtros opcionales
+    @Override
+    public List<ProductResponseDto> findByUserIdWithFilters(
+            Long userId,
+            ProductFilterByUserDto filters
+    ) {
+        if (!userRepository.existsByIdAndDeletedFalse(userId)) {
+            throw new NotFoundException("User not found");
+        }
+
+        // Ejecuta tus reglas de negocio para los filtros pasados
+        validateUserFilters(filters);
+
+        String name = normalizeName(filters.getName());
+
+        return productRepository.findByOwnerIdWithFilters(
+                        userId,
+                        name,
+                        filters.getMinPrice(),
+                        filters.getMaxPrice(),
+                        filters.getCategoryId()
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // ==========================================
+    // MÉTODO HELPER DE MAPEADO DE RESPUESTA
+    // ==========================================
     private ProductResponseDto toResponse(ProductEntity entity) {
         ProductResponseDto dto = new ProductResponseDto();
 
@@ -196,20 +225,51 @@ public class ProductServiceImpl implements ProductService {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
 
-        // 1. Instanciamos el tipo exacto que pide tu DTO para el Owner
+        // Mapeo anidado exacto para UserSummaryDto
         ProductResponseDto.UserSummaryDto ownerDto = new ProductResponseDto.UserSummaryDto();
         ownerDto.setId(entity.getOwner().getId());
         ownerDto.setName(entity.getOwner().getName());
         ownerDto.setEmail(entity.getOwner().getEmail());
         dto.setOwner(ownerDto);
 
-        // 2. Instanciamos el tipo exacto que pide tu DTO para la Categoría (CategorySummaryDto)
+        // Mapeo anidado exacto para CategorySummaryDto
         ProductResponseDto.CategorySummaryDto categoryDto = new ProductResponseDto.CategorySummaryDto();
         categoryDto.setId(entity.getCategory().getId());
         categoryDto.setName(entity.getCategory().getName());
         categoryDto.setDescription(entity.getCategory().getDescription());
-        dto.setCategory(categoryDto); // <-- Ahora sí coinciden los tipos perfectamente
+        dto.setCategory(categoryDto);
 
         return dto;
     }
+
+    // ==========================================
+    // MÉTODOS AUXILIARES PRIVADOS
+    // ==========================================
+
+    /*
+     * Valida reglas de negocio relacionadas con filtros.
+     */
+    private void validateUserFilters(ProductFilterByUserDto filters) {
+        if (filters == null) {
+            return;
+        }
+
+        if (!filters.hasValidPriceRange()) {
+            throw new BadRequestException("El precio máximo debe ser mayor o igual al precio mínimo");
+        }
+
+        if (filters.getCategoryId() != null &&
+                !categoryRepository.existsByIdAndDeletedFalse(filters.getCategoryId())) {
+            throw new NotFoundException("Category not found");
+        }
+    }
+
+    private String normalizeName(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        return name.trim();
+    }
+
+
 }

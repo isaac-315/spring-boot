@@ -23,10 +23,12 @@ public class ProductEntity extends BaseEntity {
     @Column(nullable = false)
     private Integer stock;
 
+    // Relación con el usuario dueño del producto
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity owner;
 
+    // CORREGIDO: Cambiado de @ManyToMany a @ManyToOne para alinearse con tu Service y DTOs
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private CategoryEntity category;
@@ -75,6 +77,7 @@ public class ProductEntity extends BaseEntity {
         this.owner = owner;
     }
 
+    // CORREGIDO: Ahora el getter y setter sí tienen un atributo real al cual apuntar
     public CategoryEntity getCategory() {
         return category;
     }
