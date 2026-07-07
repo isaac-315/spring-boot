@@ -1,7 +1,6 @@
 BEGIN;
 
 -- Limpieza previa
-
 TRUNCATE TABLE product_categories RESTART IDENTITY CASCADE;
 TRUNCATE TABLE products RESTART IDENTITY CASCADE;
 TRUNCATE TABLE categories RESTART IDENTITY CASCADE;
@@ -32,7 +31,7 @@ FROM generate_series(1, 10) AS gs;
 -- 2. Crear 10 categorías
 -- =========================
 
-INSERT INTO category_entity (
+INSERT INTO categories (
     name,
     description,
     created_at,
@@ -40,22 +39,23 @@ INSERT INTO category_entity (
     deleted
 )
 VALUES
-('Electrónicos', 'Productos electrónicos', NOW(), NOW(), false),
-('Gaming', 'Productos para videojuegos', NOW(), NOW(), false),
-('Oficina', 'Productos para oficina', NOW(), NOW(), false),
-('Libros', 'Libros y material académico', NOW(), NOW(), false),
-('Programación', 'Material relacionado con desarrollo de software', NOW(), NOW(), false),
-('Educación', 'Productos educativos', NOW(), NOW(), false),
-('Accesorios', 'Accesorios tecnológicos', NOW(), NOW(), false),
-('Diseño', 'Productos para diseño gráfico', NOW(), NOW(), false),
-('Redes', 'Equipos y accesorios de redes', NOW(), NOW(), false),
-('Audio', 'Dispositivos de audio', NOW(), NOW(), false);
+    ('Electrónicos', 'Productos electrónicos', NOW(), NOW(), false),
+    ('Gaming', 'Productos para videojuegos', NOW(), NOW(), false),
+    ('Oficina', 'Productos para oficina', NOW(), NOW(), false),
+    ('Libros', 'Libros y material académico', NOW(), NOW(), false),
+    ('Programación', 'Material relacionado con desarrollo de software', NOW(), NOW(), false),
+    ('Educación', 'Productos educativos', NOW(), NOW(), false),
+    ('Accesorios', 'Accesorios tecnológicos', NOW(), NOW(), false),
+    ('Diseño', 'Productos para diseño gráfico', NOW(), NOW(), false),
+    ('Redes', 'Equipos y accesorios de redes', NOW(), NOW(), false),
+    ('Audio', 'Dispositivos de audio', NOW(), NOW(), false);
 
 -- =========================
 -- 3. Crear 20 000 productos
 -- =========================
 
 INSERT INTO products (
+    product_name,
     name,
     price,
     stock,
@@ -65,7 +65,8 @@ INSERT INTO products (
     deleted
 )
 SELECT
-    'Producto ' || LPAD(gs::text, 5, '0'),
+    'Producto ' || LPAD(gs::text, 5, '0'), -- Valor para product_name
+    'Nombre ' || LPAD(gs::text, 5, '0'),   -- Valor para name
     ROUND((10 + random() * 4990)::numeric, 2),
     FLOOR(random() * 101)::int,
     (
@@ -92,13 +93,12 @@ SELECT
     p.id,
     c.id
 FROM products p
-CROSS JOIN LATERAL (
+         CROSS JOIN LATERAL (
     SELECT ce.id
-    FROM category_entity ce
+    FROM categories ce
     WHERE ce.deleted = false
     ORDER BY random() + p.id * 0
-    LIMIT (2 + FLOOR(random() * 2))::int
+        LIMIT (2 + FLOOR(random() * 2))::int
 ) c;
 
 COMMIT;
-

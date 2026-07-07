@@ -1,11 +1,14 @@
 package ec.edu.ups.icc.fundamentos01.products.controllers;
 
+import ec.edu.ups.icc.fundamentos01.core.dto.PaginationDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.CreateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.PartialUpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.dto.UpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.services.ProductService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -60,5 +63,19 @@ public class ProductsController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         service.delete(id);
+    }
+
+    @GetMapping("/page")
+    public Page<ProductResponseDto> findAllPage(
+            @Valid @ModelAttribute PaginationDto pagination
+    ) {
+        return service.findAllPage(pagination);
+    }
+
+    @GetMapping("/slice")
+    public Slice<ProductResponseDto> findAllSlice(
+            @Valid @ModelAttribute PaginationDto pagination
+    ) {
+        return service.findAllSlice(pagination);
     }
 }
