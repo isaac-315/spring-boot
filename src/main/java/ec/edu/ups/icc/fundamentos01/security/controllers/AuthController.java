@@ -1,8 +1,6 @@
 package ec.edu.ups.icc.fundamentos01.security.controllers;
 
 
-// imports packages y clases....
-
 import ec.edu.ups.icc.fundamentos01.security.dtos.AuthResponseDto;
 import ec.edu.ups.icc.fundamentos01.security.dtos.LoginRequestDto;
 import ec.edu.ups.icc.fundamentos01.security.dtos.RegisterRequestDto;
