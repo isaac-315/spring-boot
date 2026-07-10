@@ -6,31 +6,26 @@ import ec.edu.ups.icc.fundamentos01.core.dto.PaginationDto;
 import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.BadRequestException;
 import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.ConflictException;
 import ec.edu.ups.icc.fundamentos01.core.exceptions.domain.NotFoundException;
-import ec.edu.ups.icc.fundamentos01.products.dto.CreateProductDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.PartialUpdateProductDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.ProductFilterByUserDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.ProductResponseDto;
-import ec.edu.ups.icc.fundamentos01.products.dto.UpdateProductDto;
+import ec.edu.ups.icc.fundamentos01.products.dto.*;
 import ec.edu.ups.icc.fundamentos01.products.entity.ProductEntity;
 import ec.edu.ups.icc.fundamentos01.products.mappers.ProductMapper;
 import ec.edu.ups.icc.fundamentos01.products.models.ProductModel;
 import ec.edu.ups.icc.fundamentos01.products.repositories.ProductRepository;
+import ec.edu.ups.icc.fundamentos01.security.services.UserDetailsImpl;
 import ec.edu.ups.icc.fundamentos01.users.entity.UserEntity;
 import ec.edu.ups.icc.fundamentos01.users.repositories.UserRepository;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
@@ -47,54 +42,47 @@ public class ProductServiceImpl implements ProductService {
         this.categoryRepository = categoryRepository;
     }
 
-    // --- MÉTODOS PÚBLICOS (Servicios) ---
+    // --- MÉTODOS DE CONSULTA (Read Only) ---
 
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponseDto> findAll() {
-        return productRepository.findByDeletedFalse()
-                .stream()
-                .map(ProductMapper::toResponse)
-                .toList();
+        return productRepository.findByDeletedFalse().stream()
+                .map(ProductMapper::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> findAllPage(PaginationDto pagination) {
-        Pageable pageable = createPageable(pagination);
-        return productRepository.findActivePage(pageable)
+        return productRepository.findActivePage(createPageable(pagination))
                 .map(ProductMapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Slice<ProductResponseDto> findAllSlice(PaginationDto pagination) {
-        Pageable pageable = createPageable(pagination);
-        return productRepository.findActiveSlice(pageable)
+        return productRepository.findActiveSlice(createPageable(pagination))
                 .map(ProductMapper::toResponse);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ProductResponseDto findOne(Long id) {
-        ProductEntity entity = productRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
-        return ProductMapper.toResponse(entity);
+        return ProductMapper.toResponse(findEntityOrThrow(id));
     }
 
+    // --- MÉTODOS DE CREACIÓN, EDICIÓN Y ELIMINACIÓN ---
+
     @Override
-    public ProductResponseDto create(CreateProductDto dto) {
-        UserEntity owner = userRepository.findById(dto.getUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+    public ProductResponseDto create(CreateProductDto dto, UserDetailsImpl currentUser) {
+        UserEntity owner = findCurrentUserEntity(currentUser);
 
-        if (owner.isDeleted()) {
-            throw new NotFoundException("User not found");
-        }
+        // Nueva validación de nombre
+        validateProductNameForCreate(dto.getName());
 
-        if (productRepository.findByNameIgnoreCaseAndDeletedFalse(dto.getName()).isPresent()) {
-            throw new ConflictException("Product name already registered");
-        }
+        // Nueva validación de categorías
+        Set<CategoryEntity> categories = findActiveCategories(dto.getCategoryIds());
 
-        Set<CategoryEntity> categories = validateAndGetCategories(dto.getCategoryIds());
         ProductModel model = ProductMapper.toModelFromDTO(dto);
 
         ProductEntity entity = new ProductEntity();
@@ -104,128 +92,167 @@ public class ProductServiceImpl implements ProductService {
         entity.setOwner(owner);
         entity.setCategories(categories);
 
-        ProductEntity savedEntity = productRepository.save(entity);
-        return ProductMapper.toResponse(savedEntity);
+        return ProductMapper.toResponse(productRepository.save(entity));
     }
 
     @Override
-    public ProductResponseDto update(Long id, UpdateProductDto dto) {
-        ProductEntity entity = productRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+    public ProductResponseDto update(Long id, UpdateProductDto dto, UserDetailsImpl currentUser) {
+        ProductEntity entity = findEntityOrThrow(id);
+        validateOwnership(entity, currentUser);
 
-        Set<CategoryEntity> categories = validateAndGetCategories(dto.getCategoryIds());
+        // Nueva validación de nombre (excluyendo el actual)
+        validateProductNameForUpdate(id, dto.getName());
+
+        // Nueva validación de categorías
+        Set<CategoryEntity> categories = findActiveCategories(dto.getCategoryIds());
+
         entity.setName(dto.getName());
         entity.setPrice(dto.getPrice());
         entity.setStock(dto.getStock());
         entity.setCategories(categories);
 
-        ProductEntity savedEntity = productRepository.save(entity);
-        return ProductMapper.toResponse(savedEntity);
+        return ProductMapper.toResponse(productRepository.save(entity));
     }
 
     @Override
-    public ProductResponseDto partialUpdate(Long id, PartialUpdateProductDto dto) {
-        ProductEntity entity = productRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+    public ProductResponseDto partialUpdate(Long id, PartialUpdateProductDto dto, UserDetailsImpl currentUser) {
+        ProductEntity entity = findEntityOrThrow(id);
+        validateOwnership(entity, currentUser);
 
-        if (dto.getName() != null) entity.setName(dto.getName());
+        if (dto.getName() != null) {
+            validateProductNameForUpdate(id, dto.getName());
+            entity.setName(dto.getName());
+        }
         if (dto.getPrice() != null) entity.setPrice(dto.getPrice());
         if (dto.getStock() != null) entity.setStock(dto.getStock());
 
         if (dto.getCategoryIds() != null && !dto.getCategoryIds().isEmpty()) {
-            Set<CategoryEntity> categories = validateAndGetCategories(dto.getCategoryIds());
-            entity.setCategories(categories);
+            entity.setCategories(findActiveCategories(dto.getCategoryIds()));
         }
 
-        ProductEntity savedEntity = productRepository.save(entity);
-        return ProductMapper.toResponse(savedEntity);
+        return ProductMapper.toResponse(productRepository.save(entity));
     }
 
     @Override
-    public void delete(Long id) {
-        ProductEntity entity = productRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+    public void delete(Long id, UserDetailsImpl currentUser) {
+        ProductEntity entity = findEntityOrThrow(id);
+        validateOwnership(entity, currentUser);
         entity.setDeleted(true);
         productRepository.save(entity);
     }
 
+    // --- MÉTODOS DE BÚSQUEDA Y FILTROS ---
+
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponseDto> findByUserId(Long userId) {
-        if (!userRepository.existsByIdAndDeletedFalse(userId)) {
-            throw new NotFoundException("User not found");
-        }
-        return productRepository.findByOwner_IdAndDeletedFalse(userId)
-                .stream()
-                .map(ProductMapper::toResponse)
-                .toList();
+        return productRepository.findByOwner_IdAndDeletedFalse(userId).stream()
+                .map(ProductMapper::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponseDto> findByCategoryId(Long categoryId) {
-        if (!categoryRepository.existsByIdAndDeletedFalse(categoryId)) {
-            throw new NotFoundException("Category not found");
-        }
-        return productRepository.findByCategories_IdAndDeletedFalse(categoryId)
-                .stream()
-                .map(ProductMapper::toResponse)
-                .toList();
+        return productRepository.findByCategories_IdAndDeletedFalse(categoryId).stream()
+                .map(ProductMapper::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponseDto> findByUserIdWithFilters(Long userId, ProductFilterByUserDto filters) {
-        if (!userRepository.existsByIdAndDeletedFalse(userId)) {
-            throw new NotFoundException("User not found");
-        }
         validateFilters(filters);
-        String name = normalizeName(filters.getName());
         return productRepository.findByOwnerIdWithFilters(
-                        userId, name, filters.getMinPrice(), filters.getMaxPrice(), filters.getCategoryId())
-                .stream()
-                .map(ProductMapper::toResponse)
-                .toList();
+                        userId, normalizeName(filters.getName()), filters.getMinPrice(), filters.getMaxPrice(), filters.getCategoryId())
+                .stream().map(ProductMapper::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponseDto> findByCategoryIdWithFilters(Long categoryId, ProductFilterByUserDto filters) {
-        if (!categoryRepository.existsByIdAndDeletedFalse(categoryId)) {
-            throw new NotFoundException("Category not found");
-        }
         validateFilters(filters);
-        String name = normalizeName(filters.getName());
         return productRepository.findByCategoryIdWithFilters(
-                        categoryId, name, filters.getMinPrice(), filters.getMaxPrice(), filters.getUserId())
-                .stream()
-                .map(ProductMapper::toResponse)
-                .toList();
+                        categoryId, normalizeName(filters.getName()), filters.getMinPrice(), filters.getMaxPrice(), filters.getUserId())
+                .stream().map(ProductMapper::toResponse).toList();
+    }
+
+    @Override
+    public Slice<ProductResponseDto> getMyProducts(Long userId, Pageable pageable) {
+        // 1. Llamas al repositorio (usando el método que definimos antes)
+        Slice<ProductEntity> productSlice = productRepository.findByOwner_IdAndDeletedFalse(userId, pageable);
+
+        // 2. Conviertes de Entity a DTO para evitar el error 500 (referencia circular)
+        return productSlice.map(ProductMapper::toResponse);
     }
 
     // --- MÉTODOS PRIVADOS AUXILIARES ---
 
-    private Pageable createPageable(PaginationDto pagination) {
-        String sortBy = normalizeSortBy(pagination.getSortBy());
-        Sort.Direction direction = normalizeDirection(pagination.getDirection());
+    private ProductEntity findEntityOrThrow(Long id) {
+        return productRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+    }
 
+    private UserEntity findCurrentUserEntity(UserDetailsImpl currentUser) {
+        if (currentUser == null) {
+            throw new AccessDeniedException("Usuario no autenticado");
+        }
+        return userRepository.findByIdAndDeletedFalse(currentUser.getId())
+                .orElseThrow(() -> new AccessDeniedException("Usuario no autorizado"));
+    }
+
+    private void validateOwnership(ProductEntity product, UserDetailsImpl currentUser) {
+        if (currentUser == null) {
+            throw new AccessDeniedException("Usuario no autenticado");
+        }
+        if (hasRole(currentUser, "ROLE_ADMIN")) {
+            return;
+        }
+        if (product.getOwner() == null || product.getOwner().getId() == null) {
+            throw new AccessDeniedException("El producto no tiene propietario válido");
+        }
+        if (!product.getOwner().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("No puedes modificar productos ajenos");
+        }
+    }
+
+    private boolean hasRole(UserDetailsImpl user, String role) {
+        return user.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals(role));
+    }
+
+    private Pageable createPageable(PaginationDto pagination) {
         return PageRequest.of(
                 pagination.getPage(),
                 pagination.getSize(),
-                Sort.by(direction, sortBy)
+                Sort.by(normalizeDirection(pagination.getDirection()), normalizeSortBy(pagination.getSortBy()))
         );
     }
 
-    private Set<CategoryEntity> validateAndGetCategories(Set<Long> categoryIds) {
+    private void validateProductNameForCreate(String name) {
+        if (productRepository.findByNameIgnoreCaseAndDeletedFalse(name.trim()).isPresent()) {
+            throw new ConflictException("Product name already registered");
+        }
+    }
+
+    private void validateProductNameForUpdate(Long currentProductId, String name) {
+        productRepository.findByNameIgnoreCaseAndDeletedFalse(name.trim())
+                .filter(product -> !product.getId().equals(currentProductId))
+                .ifPresent(product -> {
+                    throw new ConflictException("Product name already registered");
+                });
+    }
+
+    private Set<CategoryEntity> findActiveCategories(Set<Long> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {
             throw new BadRequestException("Debe seleccionar al menos una categoría");
         }
-        Set<CategoryEntity> categories = new HashSet<>();
-        for (Long categoryId : categoryIds) {
-            CategoryEntity category = categoryRepository.findById(categoryId)
-                    .orElseThrow(() -> new NotFoundException("Category not found"));
-            if (category.isDeleted()) throw new NotFoundException("Category not found");
-            categories.add(category);
+        Set<Long> uniqueIds = new HashSet<>(categoryIds);
+        Set<CategoryEntity> categories = categoryRepository.findAllById(uniqueIds)
+                .stream()
+                .filter(category -> !category.isDeleted())
+                .collect(Collectors.toSet());
+
+        if (categories.size() != uniqueIds.size()) {
+            throw new NotFoundException("One or more categories were not found");
         }
         return categories;
     }
@@ -233,13 +260,7 @@ public class ProductServiceImpl implements ProductService {
     private void validateFilters(ProductFilterByUserDto filters) {
         if (filters == null) return;
         if (!filters.hasValidPriceRange()) {
-            throw new BadRequestException("El precio máximo debe ser mayor o igual al precio mínimo");
-        }
-        if (filters.getCategoryId() != null && !categoryRepository.existsByIdAndDeletedFalse(filters.getCategoryId())) {
-            throw new NotFoundException("Category not found");
-        }
-        if (filters.getUserId() != null && !userRepository.existsByIdAndDeletedFalse(filters.getUserId())) {
-            throw new NotFoundException("User not found");
+            throw new BadRequestException("El precio máximo debe ser mayor al precio mínimo");
         }
     }
 
@@ -247,48 +268,12 @@ public class ProductServiceImpl implements ProductService {
         return (name == null || name.isBlank()) ? null : name.trim();
     }
 
-    /*
-     * Valida que el campo de ordenamiento exista y esté permitido.
-     * Se usa lista blanca para evitar ordenar por campos inexistentes
-     * o por relaciones complejas no preparadas para esta práctica.
-     */
     private String normalizeSortBy(String sortBy) {
-        if (sortBy == null || sortBy.isBlank()) {
-            return "id";
-        }
-
-        Set<String> allowedFields = Set.of(
-                "id",
-                "name",
-                "price",
-                "stock",
-                "createdAt",
-                "updatedAt"
-        );
-
-        if (!allowedFields.contains(sortBy)) {
-            throw new BadRequestException("Campo de ordenamiento no permitido: " + sortBy);
-        }
-
-        return sortBy;
+        Set<String> allowedFields = Set.of("id", "name", "price", "stock", "createdAt", "updatedAt");
+        return (sortBy != null && allowedFields.contains(sortBy)) ? sortBy : "id";
     }
 
-    /*
-     * Convierte la dirección recibida por query param en Sort.Direction.
-     */
     private Sort.Direction normalizeDirection(String direction) {
-        if (direction == null || direction.isBlank()) {
-            return Sort.Direction.ASC;
-        }
-
-        if (direction.equalsIgnoreCase("asc")) {
-            return Sort.Direction.ASC;
-        }
-
-        if (direction.equalsIgnoreCase("desc")) {
-            return Sort.Direction.DESC;
-        }
-
-        throw new BadRequestException("Dirección de ordenamiento no válida: " + direction);
+        return (direction != null && direction.equalsIgnoreCase("desc")) ? Sort.Direction.DESC : Sort.Direction.ASC;
     }
 }

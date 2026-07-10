@@ -19,4 +19,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     // Verifica también si tienes este método, suele ser necesario en registro
     boolean existsByEmail(String email);
+
+
 }

@@ -12,7 +12,7 @@ import java.util.Set;
 @Table(name = "products")
 public class ProductEntity extends BaseEntity {
 
-    @Column(nullable = false, length = 150)
+    @Column(name = "product_name", nullable = false, length = 150)
     private String name;
 
     @Column(nullable = false)

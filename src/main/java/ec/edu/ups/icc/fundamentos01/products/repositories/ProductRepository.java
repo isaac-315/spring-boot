@@ -28,6 +28,9 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
     // CORREGIDO: De vuelta al plural porque la entidad usa Set<CategoryEntity> categories
     List<ProductEntity> findByCategories_IdAndDeletedFalse(Long categoryId);
 
+    // Agrega esta línea en tu ProductRepository
+    Slice<ProductEntity> findByOwner_IdAndDeletedFalse(Long ownerId, Pageable pageable);
+
     @Query("""
             SELECT DISTINCT p
             FROM ProductEntity p
