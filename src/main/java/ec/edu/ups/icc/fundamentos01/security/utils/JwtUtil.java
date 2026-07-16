@@ -25,6 +25,9 @@ public class JwtUtil {
     private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
 
     private final JwtProperties jwtProperties;
+    private static final String TOKEN_TYPE_CLAIM = "type";
+    private static final String ACCESS_TOKEN_TYPE = "access";
+    private static final String REFRESH_TOKEN_TYPE = "refresh";
     private final SecretKey key;
 
     public JwtUtil(JwtProperties jwtProperties) {
@@ -32,32 +35,60 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes());
     }
 
-    public String generateToken(Authentication authentication) {
+    public String generateAccessToken(Authentication authentication) {
         UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtProperties.getExpiration());
 
-        String roles = userPrincipal.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.joining(","));
-
-        return Jwts.builder()
-                .subject(String.valueOf(userPrincipal.getId()))
-                .claim("email", userPrincipal.getEmail())
-                .claim("name", userPrincipal.getName())
-                .claim("roles", roles)
-                .issuer(jwtProperties.getIssuer())
-                .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(key, Jwts.SIG.HS256)
-                .compact();
+        return buildToken(
+                userPrincipal,
+                jwtProperties.getExpiration(),
+                ACCESS_TOKEN_TYPE
+        );
     }
 
-    public String generateTokenFromUserDetails(UserDetailsImpl userDetails) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtProperties.getExpiration());
+    /*
+     * Genera un access token desde UserDetailsImpl.
+     *
+     * Este método se usa en register y refresh.
+     */
+    public String generateAccessTokenFromUserDetails(UserDetailsImpl userDetails) {
+        return buildToken(
+                userDetails,
+                jwtProperties.getExpiration(),
+                ACCESS_TOKEN_TYPE
+        );
+    }
 
-        String roles = userDetails.getAuthorities().stream()
+    /*
+     * Genera un refresh token.
+     *
+     * Este token dura más tiempo y solo debe usarse en:
+     * POST /api/auth/refresh
+     */
+    public String generateRefreshToken(UserDetailsImpl userDetails) {
+        return buildToken(
+                userDetails,
+                jwtProperties.getRefreshExpiration(),
+                REFRESH_TOKEN_TYPE
+        );
+    }
+
+    /*
+     * Método centralizado para construir tokens JWT.
+     *
+     * tokenType puede ser:
+     * - access
+     * - refresh
+     */
+    private String buildToken(
+            UserDetailsImpl userDetails,
+            Long expirationMs,
+            String tokenType
+    ) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expirationMs);
+
+        String roles = userDetails.getAuthorities()
+                .stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
@@ -66,6 +97,7 @@ public class JwtUtil {
                 .claim("email", userDetails.getEmail())
                 .claim("name", userDetails.getName())
                 .claim("roles", roles)
+                .claim(TOKEN_TYPE_CLAIM, tokenType)
                 .issuer(jwtProperties.getIssuer())
                 .issuedAt(now)
                 .expiration(expiryDate)
@@ -73,42 +105,111 @@ public class JwtUtil {
                 .compact();
     }
 
-    public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return Long.parseLong(claims.getSubject());
+    /*
+     * Mantiene compatibilidad con el nombre anterior.
+     *
+     * Si en tu AuthService todavía se llama generateToken(),
+     * este método seguirá funcionando como access token.
+     */
+    public String generateToken(Authentication authentication) {
+        return generateAccessToken(authentication);
     }
 
+    /*
+     * Mantiene compatibilidad con el nombre anterior.
+     */
+    public String generateTokenFromUserDetails(UserDetailsImpl userDetails) {
+        return generateAccessTokenFromUserDetails(userDetails);
+    }
+
+    /*
+     * Extrae el email desde cualquier token válido.
+     */
     public String getEmailFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        Claims claims = getClaims(token);
         return claims.get("email", String.class);
     }
 
+    /*
+     * Extrae el id del usuario desde el subject.
+     */
+    public Long getUserIdFromToken(String token) {
+        Claims claims = getClaims(token);
+        return Long.parseLong(claims.getSubject());
+    }
+
+    /*
+     * Extrae el tipo del token.
+     *
+     * Valores esperados:
+     * - access
+     * - refresh
+     */
+    public String getTokenType(String token) {
+        Claims claims = getClaims(token);
+        return claims.get(TOKEN_TYPE_CLAIM, String.class);
+    }
+
+    /*
+     * Valida firma, formato y expiración del token.
+     *
+     * No valida si es access o refresh.
+     * Solo valida que el JWT sea técnicamente correcto.
+     */
     public boolean validateToken(String authToken) {
         try {
-            Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(authToken);
+            getClaims(authToken);
             return true;
+
         } catch (SignatureException ex) {
             logger.error("Firma JWT inválida: {}", ex.getMessage());
+
         } catch (MalformedJwtException ex) {
             logger.error("Token JWT malformado: {}", ex.getMessage());
+
         } catch (ExpiredJwtException ex) {
             logger.error("Token JWT expirado: {}", ex.getMessage());
+
         } catch (UnsupportedJwtException ex) {
             logger.error("Token JWT no soportado: {}", ex.getMessage());
+
         } catch (IllegalArgumentException ex) {
             logger.error("JWT claims string está vacío: {}", ex.getMessage());
         }
+
         return false;
+    }
+
+    /*
+     * Valida que el token sea un access token.
+     *
+     * Este método debe usarse en JwtAuthenticationFilter.
+     */
+    public boolean validateAccessToken(String token) {
+        return validateToken(token) &&
+                ACCESS_TOKEN_TYPE.equals(getTokenType(token));
+    }
+
+    /*
+     * Valida que el token sea un refresh token.
+     *
+     * Este método debe usarse en /auth/refresh.
+     */
+    public boolean validateRefreshToken(String token) {
+        return validateToken(token) &&
+                REFRESH_TOKEN_TYPE.equals(getTokenType(token));
+    }
+
+    /*
+     * Obtiene los claims del token.
+     *
+     * Si el token es inválido, este método lanza excepción.
+     */
+    private Claims getClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
