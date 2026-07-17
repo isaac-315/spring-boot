@@ -2,21 +2,36 @@ package ec.edu.ups.icc.fundamentos01.products.dto;
 
 import ec.edu.ups.icc.fundamentos01.categories.dto.CategoryResponseDto;
 import ec.edu.ups.icc.fundamentos01.users.dto.UserResponseDto;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Schema(description = "DTO de respuesta que contiene la información detallada de un producto")
 public class ProductResponseDto {
 
+    @Schema(description = "Identificador único del producto", example = "1")
     private Long id;
+
+    @Schema(description = "Nombre comercial del producto", example = "Laptop Gamer")
     private String name;
+
+    @Schema(description = "Precio unitario del producto", example = "1200.50")
     private Double price;
+
+    @Schema(description = "Cantidad de existencias disponibles", example = "50")
     private Integer stock;
 
+    @Schema(description = "Información del usuario propietario del producto")
     private UserResponseDto owner;
+
+    @Schema(description = "Lista de categorías asociadas al producto")
     private List<CategoryResponseDto> categories;
 
+    @Schema(description = "Fecha y hora de creación", example = "2026-06-01T10:00:00")
     private LocalDateTime createdAt;
+
+    @Schema(description = "Fecha y hora de última actualización", example = "2026-06-01T12:30:00")
     private LocalDateTime updatedAt;
 
     public ProductResponseDto() {}
