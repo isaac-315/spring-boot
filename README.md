@@ -720,3 +720,137 @@ PUT /api/products/{id}
 
 DELETE /api/products/{id}
 ```
+
+
+# Práctica 14 - Refresh Tokens
+
+## Diferencia entre Access Token y Refresh Token
+
+El **Access Token** es el token que se envía en cada solicitud a un endpoint protegido mediante el encabezado:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Su tiempo de vida es corto (por ejemplo, **30 minutos**) para reducir el riesgo en caso de que sea comprometido.
+
+Por otro lado, el **Refresh Token** no se utiliza para acceder a recursos protegidos. Su única función es solicitar la emisión de un nuevo Access Token a través del endpoint:
+
+```http
+POST /auth/refresh
+```
+
+Este token tiene una duración mayor (por ejemplo, **7 días**), permitiendo al usuario mantener la sesión sin necesidad de volver a iniciar sesión con frecuencia.
+
+---
+
+## ¿Por qué el Refresh Token no debe enviarse en `Authorization: Bearer`?
+
+Cada JWT contiene un **claim** que identifica su tipo (`access` o `refresh`). Durante el proceso de autenticación, el `JwtAuthenticationFilter` verifica que el token recibido sea específicamente un **Access Token** mediante el método `validateAccessToken()`.
+
+Si se intenta utilizar un Refresh Token para acceder a un endpoint protegido, la API responderá con un **401 Unauthorized**, incluso si la firma del JWT es válida. Esto se debe a que no basta con que el token sea criptográficamente correcto; también debe ser del tipo esperado.
+
+---
+
+## ¿Qué es la rotación de un Refresh Token?
+
+La **rotación de Refresh Tokens** consiste en invalidar el Refresh Token inmediatamente después de que se utilice para obtener un nuevo Access Token. Al mismo tiempo, el sistema genera un nuevo Refresh Token para reemplazar al anterior.
+
+Gracias a este mecanismo, cada Refresh Token solo puede utilizarse una vez. Si alguien intenta reutilizar un token previamente empleado (por ejemplo, uno que haya sido robado), la API rechazará la solicitud porque dicho token ya estará marcado como `revoked = true` en la base de datos.
+
+## Evidencias
+1. Login con refresh token
+![](./assets/img_10.png)
+2. Refresh exitoso
+![](./assets/img_11.png)
+3. Logout
+![](./assets/img_12.png)
+4. Refresh después de logout
+![](./assets/img_13.png)
+
+# Práctica 15 - Documentación con Swagger , OpenAPI y Seguridad JWT
+
+## ¿Cuál es la diferencia entre Swagger UI y OpenAPI?
+
+**OpenAPI** es una especificación que define de forma estandarizada cómo está estructurada una API. Se representa mediante un archivo en formato **JSON** o **YAML**, donde se describen las rutas, los métodos HTTP, los parámetros, los cuerpos de las solicitudes y respuestas, los códigos de estado y los mecanismos de seguridad.
+
+Por su parte, **Swagger UI** es una herramienta que interpreta esa especificación OpenAPI y la presenta en una interfaz web interactiva. Gracias a ella, es posible consultar la documentación de la API y realizar pruebas de los endpoints directamente desde el navegador.
+
+---
+
+## ¿Por qué Swagger puede ser público mientras los endpoints permanecen protegidos?
+
+La documentación de Swagger y la seguridad de la API funcionan de manera independiente. En la configuración de seguridad (`SecurityConfig`) se permite el acceso público únicamente a las rutas de Swagger, como:
+
+```text
+/swagger-ui/**
+/v3/api-docs/**
+```
+
+En cambio, los endpoints reales de la aplicación (por ejemplo, `/products`, `/users`, etc.) continúan protegidos.
+
+Esto significa que cualquier usuario puede visualizar la documentación, pero no podrá consumir los endpoints protegidos sin un token válido. Aunque Swagger genere y envíe las peticiones HTTP, estas siguen siendo procesadas por el mismo `JwtAuthenticationFilter` que utiliza cualquier otro cliente.
+
+---
+
+## ¿Cómo se configura Swagger para enviar un JWT en `Authorization: Bearer`?
+
+La integración se realiza mediante dos componentes:
+
+1. **`OpenApiConfig`** define un `SecurityScheme` de tipo `http/bearer` con el nombre `bearerAuth`. Gracias a esta configuración, Swagger UI muestra el botón **Authorize**.
+
+2. Cuando el usuario introduce un JWT en ese botón, Swagger almacena el token y lo incluye automáticamente en el encabezado:
+
+```http
+Authorization: Bearer <token>
+```
+
+Este encabezado solo se agrega a los endpoints que estén marcados con la anotación:
+
+```java
+@SecurityRequirement(name = "bearerAuth")
+```
+
+Esta anotación puede colocarse a nivel de clase o de método e indica a Swagger qué operaciones requieren autenticación mediante el esquema `bearerAuth`.
+
+## Evidencias
+1. Swagger UI cargado
+![](./assets/img_14.png)
+2. JSON OpenAPI
+![](./assets/img_15.png)
+3. AuthController documentado
+![](./assets/img_16.png)
+4. Botón Authorize
+![](./assets/img_17.png)
+5. Endpoint protegido sin token
+![](./assets/img_18.png)
+6. Endpoint protegido con token desde Swagger
+![](./assets/img_19.png)
+7. Endpoint ADMIN con usuario normal
+![](./assets/img_20.png)
+8. ProductsController documentado
+![](./assets/img_21.png)
+9. Schema de respuesta documentado
+![](./assets/img_22.png)
+
+# Práctica 16 - Despliegue portable de Spring Boot con Docker y Nginx en Ubuntu Server
+
+## Evidencias
+
+1. Verificación de que ambos contenedores se encuentran activos y funcionando correctamente  
+   ![](./assets/img_23.png)
+
+2. Prueba del estado del servicio mediante un health check ejecutado desde Ubuntu Server  
+   ![](./assets/img_24.png)
+
+3. Comprobación de disponibilidad del servicio realizando un health check desde la máquina anfitriona  
+   ![](./assets/img_25.png)
+
+4. Validación de la conexión con la base de datos PostgreSQL alojada externamente  
+   ![](./assets/img_26.png)
+
+5. Prueba de autenticación iniciando sesión desde la máquina anfitriona utilizando Bruno  
+   ![](./assets/img_27.png)
+
+6. Acceso a la interfaz de Swagger UI a través de Nginx desde el navegador web  
+   ![](./assets/img_28.png)
